@@ -188,8 +188,8 @@ Nastepne kroki (recznie, swiadomie - skrypt niczego tu sam nie wlacza):
 
 Firewall (ssh, port dashboardu ${DASHBOARD_PORT}/tcp) juz otwarty automatycznie.
 
-To jest SZKIELET - panel na razie pokazuje tylko statystyki systemu i
-status uslugi Caddy (jesli jest zainstalowana). Modul CDN (tokeny klientow,
-katalogi, upload, sync do POP-ow - patrz caddy_cdn_gcore.md) dochodzi w
-kolejnym kroku.
+Kolejne aktualizacje (po "git pull" recznie brakuje np. nowych zaleznosci
+npm i usluga sie wywala) - uzywaj ${INSTALL_DIR}/update.sh zamiast samego
+"git pull":
+       cd ${INSTALL_DIR} && sudo ./update.sh
 EOF
