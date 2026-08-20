@@ -408,7 +408,7 @@
         : certs.map((c) => `
             <tr>
               <td>${escapeHtml(c.domain)}</td>
-              <td><span class="badge active">${c.staging ? 'Testowy (staging)' : 'Produkcja'}</span></td>
+              <td><span class="badge active">${c.staging ? 'Aktywny' : 'Produkcja'}</span></td>
               <td>${fmtDateTime(c.notBefore)}</td>
               <td>${fmtDateTime(c.notAfter)}</td>
               <td style="font-family:var(--mono);font-size:11px;">${escapeHtml(c.certPath)}</td>
