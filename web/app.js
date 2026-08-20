@@ -120,6 +120,140 @@
     `;
   }
 
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function fmtDateTime(iso) {
+    if (!iso) return '-';
+    try { return new Date(iso).toLocaleString('pl-PL'); } catch { return iso; }
+  }
+
+  async function renderGcore() {
+    content.innerHTML = '<p>Wczytywanie...</p>';
+    let status;
+    try {
+      status = await api('/gcore/status');
+    } catch (e) {
+      content.innerHTML = `<p class="error-msg">${escapeHtml(e.message)}</p>`;
+      return;
+    }
+    renderGcoreTiles(status);
+  }
+
+  function renderGcoreTiles(status) {
+    const lt = status.lastTest;
+    const testBadge = !lt
+      ? '<span class="badge unknown">nie testowano</span>'
+      : lt.ok
+        ? '<span class="badge active">polaczono</span>'
+        : '<span class="badge inactive">blad</span>';
+
+    const integrationTile = `
+      <div class="panel-block">
+        <h2>Integracja API</h2>
+        ${status.configured ? `
+          <div class="form-field">
+            <label>Zapisany klucz</label>
+            <input type="text" value="${escapeHtml(status.maskedKey)}" disabled>
+          </div>
+          <p>Status: ${testBadge} ${lt ? `<span style="font-size:11px;color:var(--muted);font-family:var(--mono);">(${fmtDateTime(lt.at)})</span>` : ''}</p>
+          ${lt && !lt.ok ? `<p class="error-msg">${escapeHtml(lt.error)}</p>` : ''}
+          <div class="btn-row">
+            <button class="btn secondary" id="gcore-retest-btn">Testuj polaczenie ponownie</button>
+            <button class="btn danger" id="gcore-remove-btn">Usun klucz</button>
+          </div>
+        ` : `
+          <div class="form-field">
+            <label>Klucz API Gcore (Customer Portal &rarr; API tokens)</label>
+            <input type="password" id="gcore-apikey-input" placeholder="wklej klucz API" autocomplete="off">
+          </div>
+          <div class="btn-row">
+            <button class="btn" id="gcore-save-btn">Zapisz i przetestuj</button>
+          </div>
+        `}
+        <div class="error-msg" id="gcore-form-error"></div>
+      </div>
+    `;
+
+    const statsBody = (lt && lt.ok && lt.client)
+      ? `
+        <p class="empty-state">
+          Podglad odpowiedzi Gcore <code>/iam/clients/me</code> - pelne statystyki DNS
+          (liczba stref, rekordow itp.) doloza sie z modulem Managed DNS.
+        </p>
+        <pre class="output">${escapeHtml(JSON.stringify(lt.client, null, 2))}</pre>
+      `
+      : `<p class="empty-state">Dostepne po poprawnej integracji (kafelek obok).</p>`;
+
+    const statsTile = `
+      <div class="panel-block">
+        <h2>Statystyki i informacje o koncie</h2>
+        ${statsBody}
+      </div>
+    `;
+
+    content.innerHTML = `<div class="module-grid">${integrationTile}${statsTile}</div>`;
+
+    const saveBtn = document.getElementById('gcore-save-btn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        const input = document.getElementById('gcore-apikey-input');
+        const errEl = document.getElementById('gcore-form-error');
+        errEl.textContent = '';
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Zapisuje i testuje...';
+        try {
+          const newStatus = await api('/gcore/apikey', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey: input.value })
+          });
+          renderGcoreTiles(newStatus);
+        } catch (e) {
+          errEl.textContent = e.message;
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Zapisz i przetestuj';
+        }
+      });
+    }
+
+    const retestBtn = document.getElementById('gcore-retest-btn');
+    if (retestBtn) {
+      retestBtn.addEventListener('click', async () => {
+        const errEl = document.getElementById('gcore-form-error');
+        errEl.textContent = '';
+        retestBtn.disabled = true;
+        retestBtn.textContent = 'Testowanie...';
+        try {
+          const newStatus = await api('/gcore/test', { method: 'POST' });
+          renderGcoreTiles(newStatus);
+        } catch (e) {
+          errEl.textContent = e.message;
+          retestBtn.disabled = false;
+          retestBtn.textContent = 'Testuj polaczenie ponownie';
+        }
+      });
+    }
+
+    const removeBtn = document.getElementById('gcore-remove-btn');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', async () => {
+        if (!confirm('Usunac zapisany klucz API Gcore?')) return;
+        removeBtn.disabled = true;
+        try {
+          const newStatus = await api('/gcore/apikey', { method: 'DELETE' });
+          renderGcoreTiles(newStatus);
+        } catch (e) {
+          document.getElementById('gcore-form-error').textContent = e.message;
+          removeBtn.disabled = false;
+        }
+      });
+    }
+  }
+
   function renderModules() {
     content.innerHTML = `
       <div class="panel-block">
@@ -133,7 +267,7 @@
     `;
   }
 
-  const renderers = { dashboard: renderDashboard, services: renderServices, modules: renderModules };
+  const renderers = { dashboard: renderDashboard, services: renderServices, modules: renderModules, gcore: renderGcore };
 
   function switchTab(tab) {
     activeTab = tab;
