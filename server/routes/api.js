@@ -9,7 +9,7 @@ import {
   listRecords, createRecord, updateRecord, deleteRecord
 } from '../services/gcoreDns.js';
 import { listCertificates, issueCertificate, renewCertificate, deleteCertificate } from '../services/acmeCerts.js';
-import { getPoolConfig, savePoolConfig, getPopsWithStatus, addPop, updatePop, deletePop } from '../services/cdnPool.js';
+import { getPoolConfig, savePoolConfig, getDiscoveredPops } from '../services/cdnPool.js';
 
 const router = Router();
 
@@ -188,33 +188,9 @@ router.put('/cdn/pool', (req, res) => {
 
 router.get('/cdn/pops', async (req, res) => {
   try {
-    res.json(await getPopsWithStatus());
+    res.json(await getDiscoveredPops());
   } catch (e) {
     res.status(500).json({ error: e.message });
-  }
-});
-
-router.post('/cdn/pops', (req, res) => {
-  try {
-    res.json(addPop(req.body || {}));
-  } catch (e) {
-    res.status(e.status || 500).json({ error: e.message });
-  }
-});
-
-router.put('/cdn/pops/:id', (req, res) => {
-  try {
-    res.json(updatePop(req.params.id, req.body || {}));
-  } catch (e) {
-    res.status(e.status || 500).json({ error: e.message });
-  }
-});
-
-router.delete('/cdn/pops/:id', (req, res) => {
-  try {
-    res.json(deletePop(req.params.id));
-  } catch (e) {
-    res.status(e.status || 500).json({ error: e.message });
   }
 });
 

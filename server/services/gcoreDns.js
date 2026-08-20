@@ -115,7 +115,14 @@ async function listRecords(zoneName) {
     name: rr.name,
     type: rr.type,
     ttl: rr.ttl,
-    values: (rr.resource_records || []).map((r) => contentToValue(r.content))
+    values: (rr.resource_records || []).map((r) => contentToValue(r.content)),
+    // resourceRecords - jak values, ale z zachowanym "enabled" per wpis
+    // (Gcore pozwala wylaczyc pojedynczy adres bez usuwania rekordu -
+    // przydatne np. do wylaczania POP-a z puli bez kasowania DNS).
+    resourceRecords: (rr.resource_records || []).map((r) => ({
+      value: contentToValue(r.content),
+      enabled: r.enabled !== false
+    }))
   }));
 }
 

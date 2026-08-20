@@ -116,22 +116,14 @@
       pool_tile_title: 'Pula CDN',
       pool_domain_label: 'Domena puli CDN',
       pool_domain_hint: 'Domena, pod ktora dzialaja wszystkie POP-y (routing po tokenie w sciezce, np. cdn.24z.eu/&lt;token&gt;/plik).',
-      pool_not_configured: 'Nie skonfigurowano.',
       pops_tile_title: 'Lista punktow POP',
-      pops_empty: 'Brak dodanych punktow POP.',
-      pops_dns_note: 'Status sprawdzany wzgledem realnych rekordow DNS (A/AAAA) domeny puli - "Aktywny" znaczy, ze adres IP faktycznie tam odpowiada. Pelna weryfikacja konfiguracji (Caddy, cert) to kolejny krok.',
-      pops_dns_check_failed: 'Nie udalo sie sprawdzic DNS: ',
+      pops_empty: 'Brak rekordow A/AAAA dla domeny puli (albo domena puli nie jest jeszcze ustawiona).',
+      pops_dns_note: 'Lista pobierana automatycznie z rekordow DNS (A/AAAA) domeny puli w Gcore - zaden recznie dodawany wpis. "Aktywny" = rekord jest wlaczony (enabled) w Gcore. Pelna weryfikacja konfiguracji (czy Caddy tam faktycznie dziala, czy jest zaladowany cert) to kolejny, osobny krok.',
       th_pop_host: 'Host',
       th_pop_ip: 'Adres IP',
       th_pop_status: 'Status',
       pop_status_active: 'Aktywny',
-      pop_status_inactive: 'Nie Aktywny',
-      pop_status_unknown: 'Nie sprawdzono',
-      add_pop_title: 'Dodaj punkt POP',
-      pop_name_label: 'Host (np. USA, BER, MAD)',
-      pop_host_label: 'Adres IP',
-      add_pop_btn: 'Dodaj POP',
-      delete_pop_confirm: 'Usunac punkt POP "{name}"?'
+      pop_status_inactive: 'Nie Aktywny'
     },
     en: {
       login_placeholder: 'username',
@@ -247,22 +239,14 @@
       pool_tile_title: 'CDN Pool',
       pool_domain_label: 'CDN pool domain',
       pool_domain_hint: 'The domain all POPs serve under (path-based token routing, e.g. cdn.24z.eu/&lt;token&gt;/file).',
-      pool_not_configured: 'Not configured yet.',
       pops_tile_title: 'POP list',
-      pops_empty: 'No POP points added yet.',
-      pops_dns_note: 'Status is checked against the real DNS (A/AAAA) records of the pool domain - "Active" means the IP actually answers there. Full configuration verification (Caddy, certificate) is a future step.',
-      pops_dns_check_failed: 'Failed to check DNS: ',
+      pops_empty: 'No A/AAAA records for the pool domain (or the pool domain is not set yet).',
+      pops_dns_note: 'List fetched automatically from the DNS (A/AAAA) records of the pool domain in Gcore - no manually added entries. "Active" = the record is enabled in Gcore. Full configuration verification (whether Caddy is actually running there, whether a certificate is loaded) is a future, separate step.',
       th_pop_host: 'Host',
       th_pop_ip: 'IP address',
       th_pop_status: 'Status',
       pop_status_active: 'Active',
-      pop_status_inactive: 'Not Active',
-      pop_status_unknown: 'Not checked',
-      add_pop_title: 'Add POP point',
-      pop_name_label: 'Host (e.g. USA, BER, MAD)',
-      pop_host_label: 'IP address',
-      add_pop_btn: 'Add POP',
-      delete_pop_confirm: 'Delete POP point "{name}"?'
+      pop_status_inactive: 'Not Active'
     }
   };
 

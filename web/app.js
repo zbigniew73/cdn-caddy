@@ -715,7 +715,6 @@
     content.innerHTML = `<div class="module-grid">${buildPoolTile(pool, poolError)}${buildPopsTile(popsData, popsError)}</div>`;
 
     wirePoolTile();
-    wirePopsTile();
   }
 
   function buildPoolTile(pool, poolError) {
@@ -761,26 +760,19 @@
 
   function buildPopsTile(popsData, popsError) {
     const pops = popsData.pops || [];
-    const rows = popsError
-      ? `<tr><td colspan="4" class="error-msg">${escapeHtml(popsError)}</td></tr>`
+    const rows = popsError || popsData.dnsError
+      ? `<tr><td colspan="3" class="error-msg">${escapeHtml(popsError || popsData.dnsError)}</td></tr>`
       : pops.length === 0
-        ? `<tr><td colspan="4" class="empty-state">${t('pops_empty')}</td></tr>`
+        ? `<tr><td colspan="3" class="empty-state">${t('pops_empty')}</td></tr>`
         : pops.map((p) => {
-            const statusBadge = !popsData.checked
-              ? `<span class="badge unknown">${t('pop_status_unknown')}</span>`
-              : p.active
-                ? `<span class="badge active">${t('pop_status_active')}</span>`
-                : `<span class="badge inactive">${t('pop_status_inactive')}</span>`;
+            const statusBadge = p.active
+              ? `<span class="badge active">${t('pop_status_active')}</span>`
+              : `<span class="badge inactive">${t('pop_status_inactive')}</span>`;
             return `
             <tr>
-              <td>${escapeHtml(p.name)}</td>
-              <td style="font-family:var(--mono);font-size:12px;">${escapeHtml(p.host)}</td>
+              <td>${escapeHtml(p.host)}</td>
+              <td style="font-family:var(--mono);font-size:12px;">${escapeHtml(p.ip)}</td>
               <td>${statusBadge}</td>
-              <td>
-                <div class="btn-row" style="margin-bottom:0;">
-                  <button class="btn danger cdn-pop-delete-btn" data-id="${escapeHtml(p.id)}" data-name="${escapeHtml(p.name)}">${t('delete_btn')}</button>
-                </div>
-              </td>
             </tr>
           `;
           }).join('');
@@ -789,70 +781,14 @@
       <div class="panel-block">
         <h2>${t('pops_tile_title')}</h2>
         <p class="empty-state">${t('pops_dns_note')}</p>
-        ${popsData.dnsError ? `<p class="error-msg">${t('pops_dns_check_failed')}${escapeHtml(popsData.dnsError)}</p>` : ''}
         <div style="overflow-x:auto;">
           <table class="zones">
-            <thead><tr><th>${t('th_pop_host')}</th><th>${t('th_pop_ip')}</th><th>${t('th_pop_status')}</th><th>${t('th_actions')}</th></tr></thead>
+            <thead><tr><th>${t('th_pop_host')}</th><th>${t('th_pop_ip')}</th><th>${t('th_pop_status')}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
-        <h2 style="margin-top:20px;">${t('add_pop_title')}</h2>
-        <div class="form-grid">
-          <div class="form-field">
-            <label>${t('pop_name_label')}</label>
-            <input type="text" id="cdn-pop-name-input" placeholder="USA">
-          </div>
-          <div class="form-field">
-            <label>${t('pop_host_label')}</label>
-            <input type="text" id="cdn-pop-host-input" placeholder="203.0.113.10">
-          </div>
-        </div>
-        <div class="btn-row">
-          <button class="btn" id="cdn-pop-add-btn">${t('add_pop_btn')}</button>
-        </div>
-        <div class="error-msg" id="cdn-pop-form-error"></div>
       </div>
     `;
-  }
-
-  function wirePopsTile() {
-    document.querySelectorAll('.cdn-pop-delete-btn').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        const name = btn.dataset.name;
-        if (!confirm(t('delete_pop_confirm', { name }))) return;
-        btn.disabled = true;
-        try {
-          await api(`/cdn/pops/${encodeURIComponent(id)}`, { method: 'DELETE' });
-          renderCdn();
-        } catch (e) {
-          document.getElementById('cdn-pop-form-error').textContent = e.message;
-          btn.disabled = false;
-        }
-      });
-    });
-
-    const addBtn = document.getElementById('cdn-pop-add-btn');
-    if (addBtn) {
-      addBtn.addEventListener('click', async () => {
-        const name = document.getElementById('cdn-pop-name-input').value;
-        const host = document.getElementById('cdn-pop-host-input').value;
-        const errEl = document.getElementById('cdn-pop-form-error');
-        errEl.textContent = '';
-        addBtn.disabled = true;
-        try {
-          await api('/cdn/pops', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, host })
-          });
-          renderCdn();
-        } catch (e) {
-          errEl.textContent = e.message;
-          addBtn.disabled = false;
-        }
-      });
-    }
   }
 
   const renderers = { dashboard: renderDashboard, services: renderServices, gcore: renderGcore, cdn: renderCdn };
