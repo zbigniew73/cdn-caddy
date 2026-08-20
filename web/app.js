@@ -712,10 +712,16 @@
       popsError = e.message;
     }
 
-    let mainCheck = null;
-    let siteCheck = null;
     let popServers = [];
     let popServersError = null;
+    try {
+      popServers = await api('/cdn/pop-servers');
+    } catch (e) {
+      popServersError = e.message;
+    }
+
+    let mainCheck = null;
+    let siteCheck = null;
     if (pool.mainPointHost) {
       try {
         mainCheck = await api('/cdn/caddy/main-check');
@@ -727,22 +733,17 @@
       } catch (e) {
         siteCheck = null;
       }
-      try {
-        popServers = await api('/cdn/pop-servers');
-      } catch (e) {
-        popServersError = e.message;
-      }
     }
 
     content.innerHTML = `
       <div class="module-grid">${buildPoolTile(pool, poolError)}${buildPopsTile(popsData, popsError)}</div>
-      <div class="module-grid">${buildMainPointTile(pool)}${buildPopPointTile()}</div>
-      ${pool.mainPointHost ? buildCaddyConfigSection(pool, mainCheck, siteCheck, popServers, popServersError) : ''}
+      <div class="module-grid">${buildMainPointTile(pool)}${buildPopServersTile(popServers, popServersError)}</div>
+      ${pool.mainPointHost ? buildCaddyConfigSection(pool, mainCheck, siteCheck) : ''}
     `;
 
     wirePoolTile();
     wireMainPointTile();
-    wirePopPointTile();
+    wirePopServersTile();
     if (pool.mainPointHost) wireCaddyConfigSection();
   }
 
@@ -807,7 +808,7 @@
     `;
   }
 
-  function buildCaddyConfigSection(pool, mainCheck, siteCheck, popServers, popServersError) {
+  function buildCaddyConfigSection(pool, mainCheck, siteCheck) {
     const step1 = buildCaddyStepBlock(
       'cdn-caddy-main-check',
       t('caddy_step1_title'),
@@ -831,7 +832,13 @@
         ${step2}
       </div>
     `;
-    return `<div class="module-grid">${caddyTile}${buildPopServersTile(popServers, popServersError)}</div>`;
+    const infoTile = `
+      <div class="panel-block">
+        <h2>${t('info_tile_title')}</h2>
+        <p class="empty-state">${t('info_tile_placeholder')}</p>
+      </div>
+    `;
+    return `<div class="module-grid">${caddyTile}${infoTile}</div>`;
   }
 
   function buildPopServersTile(popServers, popServersError) {
@@ -963,7 +970,6 @@
   function wireCaddyConfigSection() {
     wireCaddyStep('cdn-caddy-main-check', '/cdn/caddy/main-check', t('caddy_step1_btn'));
     wireCaddyStep('cdn-caddy-site-check', '/cdn/caddy/site-check', t('caddy_step2_btn'));
-    wirePopServersTile();
   }
 
   function buildPopPointTile() {
