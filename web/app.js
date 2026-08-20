@@ -876,9 +876,9 @@
   function buildPopsTile(popsData, popsError) {
     const pops = popsData.pops || [];
     const rows = popsError || popsData.dnsError
-      ? `<tr><td colspan="3" class="error-msg">${escapeHtml(popsError || popsData.dnsError)}</td></tr>`
+      ? `<tr><td colspan="4" class="error-msg">${escapeHtml(popsError || popsData.dnsError)}</td></tr>`
       : pops.length === 0
-        ? `<tr><td colspan="3" class="empty-state">${t('pops_empty')}</td></tr>`
+        ? `<tr><td colspan="4" class="empty-state">${t('pops_empty')}</td></tr>`
         : pops.map((p) => {
             const statusBadge = p.active
               ? `<span class="badge active">${t('pop_status_active')}</span>`
@@ -887,6 +887,7 @@
             <tr>
               <td>${escapeHtml(p.host)}</td>
               <td style="font-family:var(--mono);font-size:12px;">${escapeHtml(p.ip)}</td>
+              <td>${escapeHtml(p.description || '-')}</td>
               <td>${statusBadge}</td>
             </tr>
           `;
@@ -898,7 +899,7 @@
         <p class="empty-state">${t('pops_dns_note')}</p>
         <div style="overflow-x:auto;">
           <table class="zones">
-            <thead><tr><th>${t('th_pop_host')}</th><th>${t('th_pop_ip')}</th><th>${t('th_pop_status')}</th></tr></thead>
+            <thead><tr><th>${t('th_pop_host')}</th><th>${t('th_pop_ip')}</th><th>${t('th_pop_description')}</th><th>${t('th_pop_status')}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>

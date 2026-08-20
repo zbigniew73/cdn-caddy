@@ -143,6 +143,14 @@ function contentToValue(content) {
   return content.map((c) => (Array.isArray(c) ? c.join(',') : c)).join(' ');
 }
 
+// meta.notes w API Gcore to tablica stringow (patrz NewResourceMetaNotes
+// w oficjalnym SDK - variadic string) - sklejamy do jednego opisu.
+function notesToText(notes) {
+  if (!notes) return '';
+  if (Array.isArray(notes)) return notes.join(' ');
+  return String(notes);
+}
+
 async function listRecords(zoneName) {
   const data = await gcoreRequest('GET', `/v2/zones/${encodeURIComponent(zoneName)}/rrsets?all=true`);
   return (data?.rrsets || []).map((rr) => ({
@@ -150,12 +158,14 @@ async function listRecords(zoneName) {
     type: rr.type,
     ttl: rr.ttl,
     values: (rr.resource_records || []).map((r) => contentToValue(r.content)),
-    // resourceRecords - jak values, ale z zachowanym "enabled" per wpis
-    // (Gcore pozwala wylaczyc pojedynczy adres bez usuwania rekordu -
-    // przydatne np. do wylaczania POP-a z puli bez kasowania DNS).
+    // resourceRecords - jak values, ale z zachowanym "enabled"/"notes" per
+    // wpis (Gcore pozwala wylaczyc pojedynczy adres bez usuwania rekordu -
+    // przydatne np. do wylaczania POP-a z puli bez kasowania DNS; notes to
+    // opis wpisywany recznie w Gcore, np. nazwa POP-a).
     resourceRecords: (rr.resource_records || []).map((r) => ({
       value: contentToValue(r.content),
-      enabled: r.enabled !== false
+      enabled: r.enabled !== false,
+      notes: notesToText(r.meta?.notes)
     }))
   }));
 }

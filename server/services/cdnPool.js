@@ -79,6 +79,7 @@ async function getDiscoveredPops() {
       .flatMap((r) => r.resourceRecords.map((rr) => ({
         host: domain,
         ip: rr.value,
+        description: rr.notes,
         active: rr.enabled
       })));
 
