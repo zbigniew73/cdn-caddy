@@ -127,9 +127,12 @@ else
   git clone --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR" || die "git clone nie powiodl sie."
 fi
 
-# --- npm install ---
-log "npm install (production)..."
-(cd "$INSTALL_DIR" && npm install --omit=dev) || die "npm install nie powiodlo sie."
+# --- npm ci ---
+# npm ci (nie npm install) - instaluje dokladnie wg package-lock.json z
+# repo i nigdy go nie modyfikuje, wiec kolejne "git pull"/update.sh sie
+# nie zablokuja przez lokalna zmiane w lockfile.
+log "npm ci (production)..."
+(cd "$INSTALL_DIR" && npm ci --omit=dev) || die "npm ci nie powiodlo sie."
 
 # --- .env ---
 if [ -f "${INSTALL_DIR}/.env" ]; then

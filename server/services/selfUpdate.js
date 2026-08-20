@@ -23,6 +23,12 @@ function runError(step, e) {
 async function pullAndInstall() {
   const log = [];
 
+  // "npm install" potrafi lekko przepisac package-lock.json (inna wersja
+  // npm niz ta, ktora go wygenerowala) - taka lokalna, niezamierzona
+  // zmiana blokowalaby "git pull". To tylko metadane odtwarzalne z
+  // package.json, bezpiecznie je odrzucic przed kazdym pullem.
+  await execFileAsync('git', ['checkout', '--', 'package-lock.json', 'package.json'], EXEC_OPTS).catch(() => {});
+
   let pull;
   try {
     pull = await execFileAsync('git', ['pull'], EXEC_OPTS);
@@ -31,13 +37,16 @@ async function pullAndInstall() {
   }
   log.push('$ git pull', pull.stdout.trim(), pull.stderr.trim());
 
+  // npm ci zamiast npm install - instaluje dokladnie wg
+  // package-lock.json i nigdy go nie modyfikuje (w przeciwienstwie do
+  // npm install), wiec kolejny pull sie nie zablokuje.
   let install;
   try {
-    install = await execFileAsync('npm', ['install', '--omit=dev'], EXEC_OPTS);
+    install = await execFileAsync('npm', ['ci', '--omit=dev'], EXEC_OPTS);
   } catch (e) {
-    throw runError('npm install', e);
+    throw runError('npm ci', e);
   }
-  log.push('$ npm install --omit=dev', install.stdout.trim(), install.stderr.trim());
+  log.push('$ npm ci --omit=dev', install.stdout.trim(), install.stderr.trim());
 
   return { ok: true, log: log.filter(Boolean).join('\n') };
 }

@@ -32,11 +32,19 @@ fi
 SVC_USER="$(grep '^User=' "${INSTALL_DIR}/cdn-caddy.service" | cut -d= -f2)"
 [ -n "$SVC_USER" ] || die "Nie udalo sie odczytac User= z cdn-caddy.service."
 
+# "npm install" (nizej i w kazdym poprzednim install.sh) potrafi lekko
+# przepisac package-lock.json (inna wersja npm niz ta, ktora go
+# wygenerowala) - taka lokalna, niezamierzona zmiana blokuje "git pull"
+# ("Scalenie nadpisaloby zmiany..."). To tylko metadane odtwarzalne z
+# package.json, bezpiecznie je odrzucic przed kazdym pullem.
+log "Odrzucam ewentualne lokalne zmiany w package-lock.json/package.json..."
+sudo -u "$SVC_USER" git -C "$INSTALL_DIR" checkout -- package-lock.json package.json 2>/dev/null || true
+
 log "git pull (jako ${SVC_USER})..."
 sudo -u "$SVC_USER" git -C "$INSTALL_DIR" pull || die "git pull nie powiodl sie."
 
-log "npm install (jako ${SVC_USER}) - dociaga ewentualne nowe zaleznosci..."
-sudo -u "$SVC_USER" bash -c "cd '$INSTALL_DIR' && npm install --omit=dev" || die "npm install nie powiodlo sie."
+log "npm ci (jako ${SVC_USER}) - instalacja dokladnie wg package-lock.json, nigdy go nie modyfikuje..."
+sudo -u "$SVC_USER" bash -c "cd '$INSTALL_DIR' && npm ci --omit=dev" || die "npm ci nie powiodlo sie."
 
 log "Odswiezam sudoers (na wypadek gdyby nowy modul dodal nowe uprawnienie)..."
 INSTALL_DIR="$INSTALL_DIR" SVC_USER="$SVC_USER" "${INSTALL_DIR}/server/scripts/write-sudoers.sh"
