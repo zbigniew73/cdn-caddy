@@ -714,7 +714,8 @@
 
     content.innerHTML = `
       <div class="module-grid">${buildPoolTile(pool, poolError)}${buildPopsTile(popsData, popsError)}</div>
-      <div class="module-grid">${buildMainPointTile()}${buildPopPointTile()}</div>
+      <div class="module-grid">${buildMainPointTile(pool)}${buildPopPointTile()}</div>
+      ${pool.mainPointHost ? buildCaddyConfigSection(pool) : ''}
     `;
 
     wirePoolTile();
@@ -722,25 +723,18 @@
     wirePopPointTile();
   }
 
-  function buildMainPointTile() {
+  function buildMainPointTile(pool) {
     return `
       <div class="panel-block">
         <h2>${t('main_point_tile_title')}</h2>
         <p class="empty-state">${t('main_point_hint')}</p>
-        <div class="form-grid">
-          <div class="form-field">
-            <label>${t('ip_address_label')}</label>
-            <input type="text" id="cdn-main-point-ip-input" placeholder="203.0.113.10">
-          </div>
-          <div class="form-field">
-            <label>${t('ttl_optional_label')}</label>
-            <input type="number" id="cdn-main-point-ttl-input" placeholder="300">
-          </div>
+        <div class="form-field">
+          <label>${t('main_point_host_label')}</label>
+          <input type="text" id="cdn-main-point-host-input" placeholder="phl.24z.eu" value="${escapeHtml(pool.mainPointHost || '')}">
         </div>
         <div class="btn-row">
           <button class="btn" id="cdn-main-point-save-btn">${t('save_main_point_btn')}</button>
         </div>
-        <p class="empty-state">${t('geo_verify_note')}</p>
         <div class="error-msg" id="cdn-main-point-form-error"></div>
       </div>
     `;
@@ -750,8 +744,7 @@
     const saveBtn = document.getElementById('cdn-main-point-save-btn');
     if (saveBtn) {
       saveBtn.addEventListener('click', async () => {
-        const ip = document.getElementById('cdn-main-point-ip-input').value;
-        const ttl = document.getElementById('cdn-main-point-ttl-input').value;
+        const host = document.getElementById('cdn-main-point-host-input').value;
         const errEl = document.getElementById('cdn-main-point-form-error');
         errEl.textContent = '';
         saveBtn.disabled = true;
@@ -759,7 +752,7 @@
           await api('/cdn/pool/main-point', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ip, ttl })
+            body: JSON.stringify({ host })
           });
           renderCdn();
         } catch (e) {
@@ -768,6 +761,15 @@
         }
       });
     }
+  }
+
+  function buildCaddyConfigSection(pool) {
+    return `
+      <div class="panel-block">
+        <h2>${t('caddy_config_title')}</h2>
+        <p class="empty-state">${t('caddy_config_placeholder', { host: escapeHtml(pool.mainPointHost) })}</p>
+      </div>
+    `;
   }
 
   function buildPopPointTile() {

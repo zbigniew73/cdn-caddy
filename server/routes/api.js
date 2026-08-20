@@ -9,7 +9,7 @@ import {
   listRecords, createRecord, updateRecord, deleteRecord
 } from '../services/gcoreDns.js';
 import { listCertificates, issueCertificate, renewCertificate, deleteCertificate } from '../services/acmeCerts.js';
-import { getPoolConfig, savePoolConfig, getDiscoveredPops, setMainPoint, addPopPoint } from '../services/cdnPool.js';
+import { getPoolConfig, savePoolConfig, saveMainPointHost, getDiscoveredPops, addPopPoint } from '../services/cdnPool.js';
 
 const router = Router();
 
@@ -194,9 +194,9 @@ router.get('/cdn/pops', async (req, res) => {
   }
 });
 
-router.put('/cdn/pool/main-point', async (req, res) => {
+router.put('/cdn/pool/main-point', (req, res) => {
   try {
-    res.json(await setMainPoint(req.body || {}));
+    res.json(saveMainPointHost((req.body || {}).host));
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
   }

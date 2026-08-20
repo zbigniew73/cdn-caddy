@@ -57,20 +57,6 @@ async function getRawRRSet(zoneName, name, type) {
   }
 }
 
-// Ustawia/zastepuje "glowny" (domyslny/fallback) resource_record w
-// rrsecie - oznaczony meta.default=true (rozpoznawane przez Gcore, patrz
-// NewResourceMetaDefault w oficjalnym SDK). Odpowiada za ruch spoza
-// jakiegokolwiek kraju przypisanego do konkretnego punktu POP.
-async function setDefaultResourceRecord(zoneName, name, type, ip, ttl) {
-  const existing = await getRawRRSet(zoneName, name, type);
-  const kept = existing ? existing.resource_records.filter((r) => !(r.meta && r.meta.default)) : [];
-  const resourceRecords = [...kept, { content: [ip], enabled: true, meta: { default: true } }];
-  const body = { ttl: parseInt(ttl, 10) || (existing ? existing.ttl : 300), resource_records: resourceRecords };
-  if (existing && existing.filters && existing.filters.length) body.filters = existing.filters;
-  await gcoreRequest(existing ? 'PUT' : 'POST', `/v2/zones/${encodeURIComponent(zoneName)}/${encodeURIComponent(name)}/${type}`, body);
-  return { ok: true };
-}
-
 // Dodaje/aktualizuje punkt POP z geo-targetowaniem (meta.countries) -
 // identyfikowany po adresie IP (jesli juz istnieje wpis z tym IP,
 // podmienia mu liste krajow zamiast dublowac). Dopina tez filtr "geodns"
@@ -204,5 +190,5 @@ async function deleteRecord(zoneName, name, type) {
 
 export {
   SUPPORTED_TYPES, listZones, createZone, deleteZone, listRecords, createRecord, updateRecord, deleteRecord,
-  findZoneForDomain, setDefaultResourceRecord, setGeoResourceRecord
+  findZoneForDomain, setGeoResourceRecord
 };

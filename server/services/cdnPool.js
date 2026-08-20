@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { listRecords, findZoneForDomain, setDefaultResourceRecord, setGeoResourceRecord } from './gcoreDns.js';
+import { listRecords, findZoneForDomain, setGeoResourceRecord } from './gcoreDns.js';
 
 // Podstawowa konfiguracja "puli CDN" - domena, pod ktora dzialaja
 // wszystkie POP-y (routing po tokenie w sciezce, np.
@@ -19,9 +19,9 @@ function readState() {
   try {
     const raw = fs.readFileSync(POOL_FILE, 'utf-8');
     const parsed = JSON.parse(raw);
-    return { domain: parsed.domain || '' };
+    return { domain: parsed.domain || '', mainPointHost: parsed.mainPointHost || '' };
   } catch {
-    return { domain: '' };
+    return { domain: '', mainPointHost: '' };
   }
 }
 
@@ -36,7 +36,22 @@ function getPoolConfig() {
 
 function savePoolConfig(domain) {
   const trimmed = (domain || '').trim().replace(/\.$/, '');
-  writeState({ domain: trimmed });
+  const state = readState();
+  state.domain = trimmed;
+  writeState(state);
+  return getPoolConfig();
+}
+
+// "Glowny punkt" - hostname glownego serwera zarzadzajacego (np.
+// panelu/issuera certow/DNS mastera - patrz caddy_cdn_gcore.md), NIE
+// zaden rekord DNS ani fallback. Sam zapis odblokowuje w UI kolejna
+// sekcje ("Konfiguracja Caddy").
+function saveMainPointHost(host) {
+  const trimmed = (host || '').trim().replace(/\.$/, '');
+  if (!trimmed) throw fieldError('Podaj hostname glownego punktu.');
+  const state = readState();
+  state.mainPointHost = trimmed;
+  writeState(state);
   return getPoolConfig();
 }
 
@@ -73,25 +88,6 @@ async function getDiscoveredPops() {
   }
 }
 
-// "Glowny punkt" - domyslna/fallback odpowiedz dla ruchu spoza
-// jakiegokolwiek kraju przypisanego do konkretnego punktu POP (patrz
-// setDefaultResourceRecord w gcoreDns.js). Typ rekordu (A/AAAA)
-// rozpoznawany automatycznie z formatu adresu.
-async function setMainPoint({ ip, ttl }) {
-  const { domain } = readState();
-  if (!domain) throw fieldError('Najpierw ustaw domene puli (kafelek "Pula CDN").');
-
-  const trimmedIp = (ip || '').trim();
-  if (!trimmedIp) throw fieldError('Podaj adres IP glownego punktu.');
-
-  const zoneName = await findZoneForDomain(domain);
-  if (!zoneName) throw fieldError(`Nie znaleziono w Gcore strefy dla domeny puli "${domain}".`);
-
-  const type = trimmedIp.includes(':') ? 'AAAA' : 'A';
-  await setDefaultResourceRecord(zoneName, domain, type, trimmedIp, ttl);
-  return { ok: true };
-}
-
 // "Punkt POP" - wpis z geo-targetowaniem (kraje ISO 3166-1 alpha-2) -
 // patrz setGeoResourceRecord w gcoreDns.js. Identyfikowany po adresie
 // IP - ponowne wywolanie z tym samym IP podmienia liste krajow zamiast
@@ -117,4 +113,4 @@ async function addPopPoint({ ip, countries, ttl }) {
   return { ok: true };
 }
 
-export { getPoolConfig, savePoolConfig, getDiscoveredPops, setMainPoint, addPopPoint };
+export { getPoolConfig, savePoolConfig, saveMainPointHost, getDiscoveredPops, addPopPoint };
