@@ -11,6 +11,7 @@ import {
 import { listCertificates, issueCertificate, renewCertificate, deleteCertificate } from '../services/acmeCerts.js';
 import { getPoolConfig, savePoolConfig, saveMainPointHost, getDiscoveredPops, addPopPoint } from '../services/cdnPool.js';
 import { checkAndSetupMain, getLastMainCheck, deploySite, getLastSiteCheck } from '../services/caddyConfig.js';
+import { listPopServers, addPopServer, deletePopServer } from '../services/popServers.js';
 
 const router = Router();
 
@@ -238,6 +239,30 @@ router.get('/cdn/caddy/site-check', (req, res) => {
 router.post('/cdn/caddy/site-check', async (req, res) => {
   try {
     res.json(await deploySite());
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.get('/cdn/pop-servers', (req, res) => {
+  try {
+    res.json(listPopServers());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/cdn/pop-servers', (req, res) => {
+  try {
+    res.json(addPopServer(req.body || {}));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.delete('/cdn/pop-servers/:id', (req, res) => {
+  try {
+    res.json(deletePopServer(req.params.id));
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
   }

@@ -714,6 +714,8 @@
 
     let mainCheck = null;
     let siteCheck = null;
+    let popServers = [];
+    let popServersError = null;
     if (pool.mainPointHost) {
       try {
         mainCheck = await api('/cdn/caddy/main-check');
@@ -725,12 +727,17 @@
       } catch (e) {
         siteCheck = null;
       }
+      try {
+        popServers = await api('/cdn/pop-servers');
+      } catch (e) {
+        popServersError = e.message;
+      }
     }
 
     content.innerHTML = `
       <div class="module-grid">${buildPoolTile(pool, poolError)}${buildPopsTile(popsData, popsError)}</div>
       <div class="module-grid">${buildMainPointTile(pool)}${buildPopPointTile()}</div>
-      ${pool.mainPointHost ? buildCaddyConfigSection(pool, mainCheck, siteCheck) : ''}
+      ${pool.mainPointHost ? buildCaddyConfigSection(pool, mainCheck, siteCheck, popServers, popServersError) : ''}
     `;
 
     wirePoolTile();
@@ -800,7 +807,7 @@
     `;
   }
 
-  function buildCaddyConfigSection(pool, mainCheck, siteCheck) {
+  function buildCaddyConfigSection(pool, mainCheck, siteCheck, popServers, popServersError) {
     const step1 = buildCaddyStepBlock(
       'cdn-caddy-main-check',
       t('caddy_step1_title'),
@@ -824,13 +831,95 @@
         ${step2}
       </div>
     `;
-    const infoTile = `
+    return `<div class="module-grid">${caddyTile}${buildPopServersTile(popServers, popServersError)}</div>`;
+  }
+
+  function buildPopServersTile(popServers, popServersError) {
+    const servers = popServers || [];
+    const rows = popServersError
+      ? `<tr><td colspan="3" class="error-msg">${escapeHtml(popServersError)}</td></tr>`
+      : servers.length === 0
+        ? `<tr><td colspan="3" class="empty-state">${t('pop_servers_empty')}</td></tr>`
+        : servers.map((s) => `
+            <tr>
+              <td>${escapeHtml(s.host)}</td>
+              <td style="font-family:var(--mono);font-size:12px;">${escapeHtml(s.ip)}</td>
+              <td>
+                <div class="btn-row" style="margin-bottom:0;">
+                  <button class="btn secondary" disabled title="${t('pop_servers_sync_soon')}">${t('pop_servers_sync_btn')}</button>
+                  <button class="btn danger cdn-pop-server-delete-btn" data-id="${escapeHtml(s.id)}" data-host="${escapeHtml(s.host)}">${t('delete_btn')}</button>
+                </div>
+              </td>
+            </tr>
+          `).join('');
+
+    return `
       <div class="panel-block">
-        <h2>${t('info_tile_title')}</h2>
-        <p class="empty-state">${t('info_tile_placeholder')}</p>
+        <h2>${t('pop_servers_title')}</h2>
+        <p class="empty-state">${t('pop_servers_hint')}</p>
+        <div style="overflow-x:auto;">
+          <table class="zones">
+            <thead><tr><th>${t('th_pop_host')}</th><th>${t('th_pop_ip')}</th><th>${t('th_actions')}</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <h2 style="margin-top:20px;">${t('pop_servers_add_title')}</h2>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>${t('pop_servers_host_label')}</label>
+            <input type="text" id="cdn-pop-server-host-input" placeholder="mad.24z.eu">
+          </div>
+          <div class="form-field">
+            <label>${t('ip_address_label')}</label>
+            <input type="text" id="cdn-pop-server-ip-input" placeholder="203.0.113.50">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="cdn-pop-server-add-btn">${t('pop_servers_add_btn')}</button>
+        </div>
+        <div class="error-msg" id="cdn-pop-server-form-error"></div>
       </div>
     `;
-    return `<div class="module-grid">${caddyTile}${infoTile}</div>`;
+  }
+
+  function wirePopServersTile() {
+    document.querySelectorAll('.cdn-pop-server-delete-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const host = btn.dataset.host;
+        if (!confirm(t('pop_servers_delete_confirm', { host }))) return;
+        btn.disabled = true;
+        try {
+          await api(`/cdn/pop-servers/${encodeURIComponent(id)}`, { method: 'DELETE' });
+          renderCdn();
+        } catch (e) {
+          document.getElementById('cdn-pop-server-form-error').textContent = e.message;
+          btn.disabled = false;
+        }
+      });
+    });
+
+    const addBtn = document.getElementById('cdn-pop-server-add-btn');
+    if (addBtn) {
+      addBtn.addEventListener('click', async () => {
+        const host = document.getElementById('cdn-pop-server-host-input').value;
+        const ip = document.getElementById('cdn-pop-server-ip-input').value;
+        const errEl = document.getElementById('cdn-pop-server-form-error');
+        errEl.textContent = '';
+        addBtn.disabled = true;
+        try {
+          await api('/cdn/pop-servers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ host, ip })
+          });
+          renderCdn();
+        } catch (e) {
+          errEl.textContent = e.message;
+          addBtn.disabled = false;
+        }
+      });
+    }
   }
 
   function wireCaddyStep(idPrefix, apiPath, btnLabel) {
@@ -874,6 +963,7 @@
   function wireCaddyConfigSection() {
     wireCaddyStep('cdn-caddy-main-check', '/cdn/caddy/main-check', t('caddy_step1_btn'));
     wireCaddyStep('cdn-caddy-site-check', '/cdn/caddy/site-check', t('caddy_step2_btn'));
+    wirePopServersTile();
   }
 
   function buildPopPointTile() {
