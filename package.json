@@ -1,6 +1,6 @@
 {
   "name": "cdn-caddy",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Panel (dashboard) mini-CDN na AlmaLinux/Rocky Linux - szkielet wzorowany na dns-dashboard, modul CDN dochodzi po instalacji.",
   "type": "module",
   "main": "server/index.js",

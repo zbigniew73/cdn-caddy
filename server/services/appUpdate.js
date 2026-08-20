@@ -4,7 +4,14 @@ import { APP_VERSION } from '../version.js';
 // na galezi "main" na GitHubie z wersja aktualnie uruchomiona. Sam nic nie
 // aktualizuje (swiadomie, jak reszta tego projektu) - tylko informuje, ze
 // jest nowsza wersja do recznego pobrania (git pull + restart uslugi).
-const REMOTE_PACKAGE_JSON = 'https://raw.githubusercontent.com/zbigniew73/cdn-caddy/main/package.json';
+//
+// Celowo GitHub API (contents), NIE raw.githubusercontent.com - to
+// drugie jest za Fastly z cache do 5 min NA WEZEL BRZEGOWY (rozny serwer
+// moze dostac inna, stara odpowiedz przez dobrych kilka minut po pushu,
+// i to nie da sie ominac przez query-string ani naglowki Cache-Control -
+// sprawdzone empirycznie). API "contents" ma max-age=60 i faktycznie tyle
+// trwa.
+const REMOTE_PACKAGE_JSON = 'https://api.github.com/repos/zbigniew73/cdn-caddy/contents/package.json?ref=main';
 
 function compareVersions(a, b) {
   const pa = String(a).split('.').map((n) => parseInt(n, 10) || 0);
@@ -20,7 +27,9 @@ function compareVersions(a, b) {
 async function checkForUpdate() {
   const checkedAt = new Date().toISOString();
   try {
-    const res = await fetch(REMOTE_PACKAGE_JSON, { headers: { 'User-Agent': 'cdn-caddy-dashboard' } });
+    const res = await fetch(REMOTE_PACKAGE_JSON, {
+      headers: { 'User-Agent': 'cdn-caddy-dashboard', Accept: 'application/vnd.github.raw' }
+    });
     if (!res.ok) throw new Error(`GitHub zwrocil HTTP ${res.status}`);
     const pkg = await res.json();
     const latest = pkg.version;
