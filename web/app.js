@@ -712,10 +712,19 @@
       popsError = e.message;
     }
 
+    let mainCheck = null;
+    if (pool.mainPointHost) {
+      try {
+        mainCheck = await api('/cdn/caddy/main-check');
+      } catch (e) {
+        mainCheck = null;
+      }
+    }
+
     content.innerHTML = `
       <div class="module-grid">${buildPoolTile(pool, poolError)}${buildPopsTile(popsData, popsError)}</div>
       <div class="module-grid">${buildMainPointTile(pool)}${buildPopPointTile()}</div>
-      ${pool.mainPointHost ? buildCaddyConfigSection(pool) : ''}
+      ${pool.mainPointHost ? buildCaddyConfigSection(pool, mainCheck) : ''}
     `;
 
     wirePoolTile();
@@ -764,7 +773,14 @@
     }
   }
 
-  function buildCaddyConfigSection(pool) {
+  function buildCaddyConfigSection(pool, mainCheck) {
+    const hasResult = Boolean(mainCheck && mainCheck.at);
+    const statusClass = hasResult ? (mainCheck.ok ? 'active' : 'inactive') : '';
+    const statusText = hasResult ? (mainCheck.ok ? t('caddy_step1_success') : t('caddy_step1_failed')) : '';
+    const timeText = hasResult ? fmtDateTime(mainCheck.at) : '';
+    const outputText = hasResult && mainCheck.log ? mainCheck.log : '';
+    const errorText = hasResult && !mainCheck.ok && mainCheck.error ? mainCheck.error : '';
+
     const caddyTile = `
       <div class="panel-block">
         <h2>${t('caddy_config_title')}</h2>
@@ -773,10 +789,11 @@
         <p class="empty-state">${t('caddy_step1_hint', { host: escapeHtml(pool.mainPointHost) })}</p>
         <div class="btn-row" style="align-items:center;">
           <button class="btn" id="cdn-caddy-main-check-btn">${t('caddy_step1_btn')}</button>
-          <span class="badge" id="cdn-caddy-main-check-status" style="display:none;"></span>
+          <span class="badge ${statusClass}" id="cdn-caddy-main-check-status" style="${hasResult ? '' : 'display:none;'}">${escapeHtml(statusText)}</span>
+          <span id="cdn-caddy-main-check-time" style="font-size:11px;color:var(--muted);font-family:var(--mono);${hasResult ? '' : 'display:none;'}">${escapeHtml(timeText)}</span>
         </div>
-        <pre class="output" id="cdn-caddy-main-check-output" style="display:none;"></pre>
-        <div class="error-msg" id="cdn-caddy-main-check-error"></div>
+        <pre class="output" id="cdn-caddy-main-check-output" style="${outputText ? '' : 'display:none;'}">${escapeHtml(outputText)}</pre>
+        <div class="error-msg" id="cdn-caddy-main-check-error">${escapeHtml(errorText)}</div>
       </div>
     `;
     const infoTile = `
@@ -795,9 +812,11 @@
         const errEl = document.getElementById('cdn-caddy-main-check-error');
         const outEl = document.getElementById('cdn-caddy-main-check-output');
         const statusEl = document.getElementById('cdn-caddy-main-check-status');
+        const timeEl = document.getElementById('cdn-caddy-main-check-time');
         errEl.textContent = '';
         outEl.style.display = 'none';
         statusEl.style.display = 'none';
+        timeEl.style.display = 'none';
         checkBtn.disabled = true;
         checkBtn.textContent = t('caddy_step1_running');
         try {
@@ -807,11 +826,15 @@
           statusEl.className = 'badge active';
           statusEl.textContent = t('caddy_step1_success');
           statusEl.style.display = 'inline-block';
+          timeEl.textContent = fmtDateTime(result.at);
+          timeEl.style.display = 'inline';
         } catch (e) {
           errEl.textContent = e.message;
           statusEl.className = 'badge inactive';
           statusEl.textContent = t('caddy_step1_failed');
           statusEl.style.display = 'inline-block';
+          timeEl.textContent = fmtDateTime(new Date().toISOString());
+          timeEl.style.display = 'inline';
         } finally {
           checkBtn.disabled = false;
           checkBtn.textContent = t('caddy_step1_btn');

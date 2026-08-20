@@ -10,7 +10,7 @@ import {
 } from '../services/gcoreDns.js';
 import { listCertificates, issueCertificate, renewCertificate, deleteCertificate } from '../services/acmeCerts.js';
 import { getPoolConfig, savePoolConfig, saveMainPointHost, getDiscoveredPops, addPopPoint } from '../services/cdnPool.js';
-import { checkAndSetupMain } from '../services/caddyConfig.js';
+import { checkAndSetupMain, getLastMainCheck } from '../services/caddyConfig.js';
 
 const router = Router();
 
@@ -208,6 +208,14 @@ router.post('/cdn/pool/pop-point', async (req, res) => {
     res.json(await addPopPoint(req.body || {}));
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.get('/cdn/caddy/main-check', (req, res) => {
+  try {
+    res.json(getLastMainCheck());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
