@@ -37,9 +37,57 @@ async function gcoreRequest(method, path, body) {
 
   if (!res.ok) {
     const msg = data?.error || data?.detail || `Gcore API zwrocilo HTTP ${res.status}`;
-    throw Object.assign(new Error(msg), { status: res.status >= 400 && res.status < 500 ? 400 : 502 });
+    throw Object.assign(new Error(msg), {
+      status: res.status >= 400 && res.status < 500 ? 400 : 502,
+      httpStatus: res.status
+    });
   }
   return data;
+}
+
+// Surowy rrset (z zachowanym "meta"/"filters", w przeciwienstwie do
+// listRecords()) - null jesli nie istnieje. Uzywane przez modul puli CDN
+// do budowania GeoDNS (glowny/domyslny punkt + punkty POP per kraj).
+async function getRawRRSet(zoneName, name, type) {
+  try {
+    return await gcoreRequest('GET', `/v2/zones/${encodeURIComponent(zoneName)}/${encodeURIComponent(name)}/${type}`);
+  } catch (e) {
+    if (e.httpStatus === 404) return null;
+    throw e;
+  }
+}
+
+// Ustawia/zastepuje "glowny" (domyslny/fallback) resource_record w
+// rrsecie - oznaczony meta.default=true (rozpoznawane przez Gcore, patrz
+// NewResourceMetaDefault w oficjalnym SDK). Odpowiada za ruch spoza
+// jakiegokolwiek kraju przypisanego do konkretnego punktu POP.
+async function setDefaultResourceRecord(zoneName, name, type, ip, ttl) {
+  const existing = await getRawRRSet(zoneName, name, type);
+  const kept = existing ? existing.resource_records.filter((r) => !(r.meta && r.meta.default)) : [];
+  const resourceRecords = [...kept, { content: [ip], enabled: true, meta: { default: true } }];
+  const body = { ttl: parseInt(ttl, 10) || (existing ? existing.ttl : 300), resource_records: resourceRecords };
+  if (existing && existing.filters && existing.filters.length) body.filters = existing.filters;
+  await gcoreRequest(existing ? 'PUT' : 'POST', `/v2/zones/${encodeURIComponent(zoneName)}/${encodeURIComponent(name)}/${type}`, body);
+  return { ok: true };
+}
+
+// Dodaje/aktualizuje punkt POP z geo-targetowaniem (meta.countries) -
+// identyfikowany po adresie IP (jesli juz istnieje wpis z tym IP,
+// podmienia mu liste krajow zamiast dublowac). Dopina tez filtr "geodns"
+// na poziomie calego rrsetu - bez niego Gcore zwracalby po prostu
+// wszystkie wlaczone rekordy naraz, a nie realny wybor wg kraju
+// zapytania (patrz RRSet.Filters / NewGeoDNSFilter w oficjalnym SDK).
+async function setGeoResourceRecord(zoneName, name, type, ip, countries, ttl) {
+  const existing = await getRawRRSet(zoneName, name, type);
+  const kept = existing ? existing.resource_records.filter((r) => !(Array.isArray(r.content) && r.content[0] === ip)) : [];
+  const resourceRecords = [...kept, { content: [ip], enabled: true, meta: { countries } }];
+  const body = {
+    ttl: parseInt(ttl, 10) || (existing ? existing.ttl : 300),
+    resource_records: resourceRecords,
+    filters: [{ type: 'geodns', limit: 1, strict: false }]
+  };
+  await gcoreRequest(existing ? 'PUT' : 'POST', `/v2/zones/${encodeURIComponent(zoneName)}/${encodeURIComponent(name)}/${type}`, body);
+  return { ok: true };
 }
 
 async function listZones() {
@@ -154,4 +202,7 @@ async function deleteRecord(zoneName, name, type) {
   return { ok: true };
 }
 
-export { SUPPORTED_TYPES, listZones, createZone, deleteZone, listRecords, createRecord, updateRecord, deleteRecord, findZoneForDomain };
+export {
+  SUPPORTED_TYPES, listZones, createZone, deleteZone, listRecords, createRecord, updateRecord, deleteRecord,
+  findZoneForDomain, setDefaultResourceRecord, setGeoResourceRecord
+};

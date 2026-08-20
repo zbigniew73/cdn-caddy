@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { listRecords, findZoneForDomain } from './gcoreDns.js';
+import { listRecords, findZoneForDomain, setDefaultResourceRecord, setGeoResourceRecord } from './gcoreDns.js';
 
 // Podstawowa konfiguracja "puli CDN" - domena, pod ktora dzialaja
 // wszystkie POP-y (routing po tokenie w sciezce, np.
@@ -10,6 +10,10 @@ import { listRecords, findZoneForDomain } from './gcoreDns.js';
 // plik danych bez specjalnych uprawnien wystarczy.
 const DATA_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../data');
 const POOL_FILE = path.join(DATA_DIR, 'cdn-pool.json');
+
+function fieldError(msg) {
+  return Object.assign(new Error(msg), { status: 400 });
+}
 
 function readState() {
   try {
@@ -69,4 +73,48 @@ async function getDiscoveredPops() {
   }
 }
 
-export { getPoolConfig, savePoolConfig, getDiscoveredPops };
+// "Glowny punkt" - domyslna/fallback odpowiedz dla ruchu spoza
+// jakiegokolwiek kraju przypisanego do konkretnego punktu POP (patrz
+// setDefaultResourceRecord w gcoreDns.js). Typ rekordu (A/AAAA)
+// rozpoznawany automatycznie z formatu adresu.
+async function setMainPoint({ ip, ttl }) {
+  const { domain } = readState();
+  if (!domain) throw fieldError('Najpierw ustaw domene puli (kafelek "Pula CDN").');
+
+  const trimmedIp = (ip || '').trim();
+  if (!trimmedIp) throw fieldError('Podaj adres IP glownego punktu.');
+
+  const zoneName = await findZoneForDomain(domain);
+  if (!zoneName) throw fieldError(`Nie znaleziono w Gcore strefy dla domeny puli "${domain}".`);
+
+  const type = trimmedIp.includes(':') ? 'AAAA' : 'A';
+  await setDefaultResourceRecord(zoneName, domain, type, trimmedIp, ttl);
+  return { ok: true };
+}
+
+// "Punkt POP" - wpis z geo-targetowaniem (kraje ISO 3166-1 alpha-2) -
+// patrz setGeoResourceRecord w gcoreDns.js. Identyfikowany po adresie
+// IP - ponowne wywolanie z tym samym IP podmienia liste krajow zamiast
+// dublowac wpis.
+async function addPopPoint({ ip, countries, ttl }) {
+  const { domain } = readState();
+  if (!domain) throw fieldError('Najpierw ustaw domene puli (kafelek "Pula CDN").');
+
+  const trimmedIp = (ip || '').trim();
+  if (!trimmedIp) throw fieldError('Podaj adres IP punktu POP.');
+
+  const countryList = (countries || '')
+    .split(',')
+    .map((c) => c.trim().toUpperCase())
+    .filter(Boolean);
+  if (countryList.length === 0) throw fieldError('Podaj przynajmniej jeden kod kraju (ISO 3166-1 alpha-2, np. PL,DE,CZ).');
+
+  const zoneName = await findZoneForDomain(domain);
+  if (!zoneName) throw fieldError(`Nie znaleziono w Gcore strefy dla domeny puli "${domain}".`);
+
+  const type = trimmedIp.includes(':') ? 'AAAA' : 'A';
+  await setGeoResourceRecord(zoneName, domain, type, trimmedIp, countryList, ttl);
+  return { ok: true };
+}
+
+export { getPoolConfig, savePoolConfig, getDiscoveredPops, setMainPoint, addPopPoint };

@@ -712,9 +712,115 @@
       popsError = e.message;
     }
 
-    content.innerHTML = `<div class="module-grid">${buildPoolTile(pool, poolError)}${buildPopsTile(popsData, popsError)}</div>`;
+    content.innerHTML = `
+      <div class="module-grid">${buildPoolTile(pool, poolError)}${buildPopsTile(popsData, popsError)}</div>
+      <div class="module-grid">${buildMainPointTile()}${buildPopPointTile()}</div>
+    `;
 
     wirePoolTile();
+    wireMainPointTile();
+    wirePopPointTile();
+  }
+
+  function buildMainPointTile() {
+    return `
+      <div class="panel-block">
+        <h2>${t('main_point_tile_title')}</h2>
+        <p class="empty-state">${t('main_point_hint')}</p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>${t('ip_address_label')}</label>
+            <input type="text" id="cdn-main-point-ip-input" placeholder="203.0.113.10">
+          </div>
+          <div class="form-field">
+            <label>${t('ttl_optional_label')}</label>
+            <input type="number" id="cdn-main-point-ttl-input" placeholder="300">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="cdn-main-point-save-btn">${t('save_main_point_btn')}</button>
+        </div>
+        <p class="empty-state">${t('geo_verify_note')}</p>
+        <div class="error-msg" id="cdn-main-point-form-error"></div>
+      </div>
+    `;
+  }
+
+  function wireMainPointTile() {
+    const saveBtn = document.getElementById('cdn-main-point-save-btn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        const ip = document.getElementById('cdn-main-point-ip-input').value;
+        const ttl = document.getElementById('cdn-main-point-ttl-input').value;
+        const errEl = document.getElementById('cdn-main-point-form-error');
+        errEl.textContent = '';
+        saveBtn.disabled = true;
+        try {
+          await api('/cdn/pool/main-point', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip, ttl })
+          });
+          renderCdn();
+        } catch (e) {
+          errEl.textContent = e.message;
+          saveBtn.disabled = false;
+        }
+      });
+    }
+  }
+
+  function buildPopPointTile() {
+    return `
+      <div class="panel-block">
+        <h2>${t('pop_point_tile_title')}</h2>
+        <p class="empty-state">${t('pop_point_hint')}</p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>${t('ip_address_label')}</label>
+            <input type="text" id="cdn-pop-point-ip-input" placeholder="203.0.113.20">
+          </div>
+          <div class="form-field">
+            <label>${t('ttl_optional_label')}</label>
+            <input type="number" id="cdn-pop-point-ttl-input" placeholder="300">
+          </div>
+        </div>
+        <div class="form-field">
+          <label>${t('countries_label')}</label>
+          <input type="text" id="cdn-pop-point-countries-input" placeholder="PL,DE,CZ">
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="cdn-pop-point-save-btn">${t('add_pop_point_btn')}</button>
+        </div>
+        <p class="empty-state">${t('geo_verify_note')}</p>
+        <div class="error-msg" id="cdn-pop-point-form-error"></div>
+      </div>
+    `;
+  }
+
+  function wirePopPointTile() {
+    const saveBtn = document.getElementById('cdn-pop-point-save-btn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        const ip = document.getElementById('cdn-pop-point-ip-input').value;
+        const ttl = document.getElementById('cdn-pop-point-ttl-input').value;
+        const countries = document.getElementById('cdn-pop-point-countries-input').value;
+        const errEl = document.getElementById('cdn-pop-point-form-error');
+        errEl.textContent = '';
+        saveBtn.disabled = true;
+        try {
+          await api('/cdn/pool/pop-point', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip, ttl, countries })
+          });
+          renderCdn();
+        } catch (e) {
+          errEl.textContent = e.message;
+          saveBtn.disabled = false;
+        }
+      });
+    }
   }
 
   function buildPoolTile(pool, poolError) {

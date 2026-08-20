@@ -123,7 +123,18 @@
       th_pop_ip: 'Adres IP',
       th_pop_status: 'Status',
       pop_status_active: 'Aktywny',
-      pop_status_inactive: 'Nie Aktywny'
+      pop_status_inactive: 'Nie Aktywny',
+
+      main_point_tile_title: 'Dodaj/Ustaw glowny punkt',
+      main_point_hint: 'Domyslna (fallback) odpowiedz dla ruchu spoza krajow przypisanych do konkretnych punktow POP.',
+      save_main_point_btn: 'Zapisz glowny punkt',
+      pop_point_tile_title: 'Dodaj/Ustaw punkt POP',
+      pop_point_hint: 'Punkt z geo-targetowaniem (GeoDNS) - podany adres IP bedzie odpowiadal tylko zapytaniom z wybranych krajow. Ten sam adres IP uzyty ponownie podmienia liste krajow.',
+      ip_address_label: 'Adres IP',
+      ttl_optional_label: 'TTL (opcjonalnie, domyslnie 300)',
+      countries_label: 'Kraje (ISO 3166-1 alpha-2, po przecinku, np. PL,DE,CZ)',
+      add_pop_point_btn: 'Dodaj/zapisz punkt POP',
+      geo_verify_note: 'Rzeczywiste dzialanie geo-routingu sprawdz niezaleznie (np. serwisem sprawdzajacym DNS z roznych krajow) - panel tylko wysyla konfiguracje do Gcore.'
     },
     en: {
       login_placeholder: 'username',
@@ -246,7 +257,18 @@
       th_pop_ip: 'IP address',
       th_pop_status: 'Status',
       pop_status_active: 'Active',
-      pop_status_inactive: 'Not Active'
+      pop_status_inactive: 'Not Active',
+
+      main_point_tile_title: 'Add/Set main point',
+      main_point_hint: 'Default (fallback) answer for traffic outside any country assigned to a specific POP point.',
+      save_main_point_btn: 'Save main point',
+      pop_point_tile_title: 'Add/Set POP point',
+      pop_point_hint: 'A geo-targeted (GeoDNS) point - the given IP will only answer queries from the selected countries. Reusing the same IP address replaces its country list.',
+      ip_address_label: 'IP address',
+      ttl_optional_label: 'TTL (optional, default 300)',
+      countries_label: 'Countries (ISO 3166-1 alpha-2, comma-separated, e.g. PL,DE,CZ)',
+      add_pop_point_btn: 'Add/save POP point',
+      geo_verify_note: 'Verify the actual geo-routing behavior independently (e.g. with an online DNS checker from different countries) - the panel only sends the configuration to Gcore.'
     }
   };
 
