@@ -104,7 +104,10 @@ async function issueCertificate(domain, { staging = true, email } = {}) {
           throw new Error('Obslugiwane jest wylacznie wyzwanie DNS-01.');
         }
         const recordName = `_acme-challenge.${authz.identifier.value}`;
-        await createRecord(zoneName, { name: recordName, type: 'TXT', ttl: 60, values: [keyAuthorization] });
+        // 120s - minimalny TTL dozwolony na planie Free w Gcore (nizsze
+        // wartosci odrzuca API bledem "You can not use ttl values less
+        // than 120s on the Free plan").
+        await createRecord(zoneName, { name: recordName, type: 'TXT', ttl: 120, values: [keyAuthorization] });
         // Krotki bufor na propagacje w sieci Gcore przed pierwsza proba
         // walidacji - biblioteka i tak ponawia z backoffem (10x, 5-30s).
         await new Promise((resolve) => setTimeout(resolve, 5000));
