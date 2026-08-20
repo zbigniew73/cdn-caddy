@@ -764,12 +764,19 @@
   }
 
   function buildCaddyConfigSection(pool) {
-    return `
+    const caddyTile = `
       <div class="panel-block">
         <h2>${t('caddy_config_title')}</h2>
         <p class="empty-state">${t('caddy_config_placeholder', { host: escapeHtml(pool.mainPointHost) })}</p>
       </div>
     `;
+    const infoTile = `
+      <div class="panel-block">
+        <h2>${t('info_tile_title')}</h2>
+        <p class="empty-state">${t('info_tile_placeholder')}</p>
+      </div>
+    `;
+    return `<div class="module-grid">${caddyTile}${infoTile}</div>`;
   }
 
   function buildPopPointTile() {
