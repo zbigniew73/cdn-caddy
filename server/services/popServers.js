@@ -37,17 +37,23 @@ function getPopServer(id) {
   return readState().find((s) => s.id === id) || null;
 }
 
-function addPopServer({ host, ip }) {
+function addPopServer({ host, ip, port }) {
   const trimmedHost = (host || '').trim();
   const trimmedIp = (ip || '').trim();
   if (!trimmedHost) throw fieldError('Podaj host.');
   if (!trimmedIp) throw fieldError('Podaj adres IP.');
+
+  const trimmedPort = (port === undefined || port === null || port === '') ? 22 : parseInt(port, 10);
+  if (!Number.isInteger(trimmedPort) || trimmedPort < 1 || trimmedPort > 65535) {
+    throw fieldError('Port SSH musi byc liczba z zakresu 1-65535.');
+  }
 
   const servers = readState();
   const server = {
     id: crypto.randomUUID(),
     host: trimmedHost,
     ip: trimmedIp,
+    port: trimmedPort,
     addedAt: new Date().toISOString()
   };
   servers.push(server);

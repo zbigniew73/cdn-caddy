@@ -65,11 +65,11 @@ const SSH_BASE_ARGS = [
 // (jesli podane) trafia na stdin zdalnego procesu - tak przesylamy
 // tresc plikow (certy, Caddyfile) bez SCP (ktore forced-command i tak
 // by zablokowal).
-function runRemote(ip, command, stdinData) {
+function runRemote(ip, port, command, stdinData) {
   return new Promise((resolve, reject) => {
     let child;
     try {
-      child = spawn('ssh', [...SSH_BASE_ARGS, '-i', KEY_PATH, `root@${ip}`, command]);
+      child = spawn('ssh', [...SSH_BASE_ARGS, '-p', String(port || 22), '-i', KEY_PATH, `root@${ip}`, command]);
     } catch (e) {
       reject(e);
       return;
@@ -172,10 +172,11 @@ async function syncPopServer(id) {
   const log = [];
   const at = new Date().toISOString();
   const ip = server.ip;
+  const port = server.port || 22;
 
   const step = async (label, command, stdinData) => {
     try {
-      const out = await runRemote(ip, command, stdinData);
+      const out = await runRemote(ip, port, command, stdinData);
       log.push(`$ ${command}`, out);
     } catch (e) {
       throw Object.assign(new Error(`${label} nie powiodlo sie: ${e.message}`), { status: 502 });

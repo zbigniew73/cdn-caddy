@@ -871,7 +871,7 @@
             return `
             <tr>
               <td style="text-align:center;vertical-align:middle;">${escapeHtml(s.host)}</td>
-              <td style="text-align:center;vertical-align:middle;font-family:var(--mono);font-size:12px;">${escapeHtml(s.ip)}</td>
+              <td style="text-align:center;vertical-align:middle;font-family:var(--mono);font-size:12px;">${escapeHtml(s.ip)}${s.port && s.port !== 22 ? `:${escapeHtml(String(s.port))}` : ''}</td>
               <td style="text-align:center;vertical-align:middle;">
                 <span class="badge ${statusClass}" id="cdn-pop-sync-status-${escapeHtml(s.id)}">${escapeHtml(statusText)}</span>
               </td>
@@ -919,6 +919,10 @@
           <div class="form-field">
             <label>${t('ip_address_label')}</label>
             <input type="text" id="cdn-pop-server-ip-input" placeholder="203.0.113.50">
+          </div>
+          <div class="form-field">
+            <label>${t('pop_servers_port_label')}</label>
+            <input type="number" id="cdn-pop-server-port-input" placeholder="22" min="1" max="65535">
           </div>
         </div>
         <div class="btn-row">
@@ -979,6 +983,7 @@
       addBtn.addEventListener('click', async () => {
         const host = document.getElementById('cdn-pop-server-host-input').value;
         const ip = document.getElementById('cdn-pop-server-ip-input').value;
+        const port = document.getElementById('cdn-pop-server-port-input').value;
         const errEl = document.getElementById('cdn-pop-server-form-error');
         errEl.textContent = '';
         addBtn.disabled = true;
@@ -986,7 +991,7 @@
           await api('/cdn/pop-servers', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ host, ip })
+            body: JSON.stringify({ host, ip, port: port || undefined })
           });
           renderCdn();
         } catch (e) {
