@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getSystemStats } from '../services/systemStats.js';
 import { listServices } from '../services/systemServices.js';
 import { getStatus, saveAndTestApiKey, retestApiKey, removeApiKey } from '../services/gcore.js';
+import { checkForUpdate } from '../services/appUpdate.js';
 
 const router = Router();
 
@@ -16,6 +17,14 @@ router.get('/system/summary', async (req, res) => {
 router.get('/system/services', async (req, res) => {
   try {
     res.json(await listServices());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/system/version-check', async (req, res) => {
+  try {
+    res.json(await checkForUpdate());
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

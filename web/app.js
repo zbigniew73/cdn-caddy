@@ -304,6 +304,47 @@
     app.style.display = 'flex';
     currentUserEl.textContent = username || '';
     switchTab(activeTab);
+    loadVersionBadge();
+  }
+
+  async function loadVersionBadge() {
+    const badge = document.getElementById('version-badge');
+    if (!badge) return;
+    let info;
+    try {
+      info = await api('/system/version-check');
+    } catch (e) {
+      badge.className = 'badge unknown';
+      badge.textContent = '?';
+      badge.title = 'Nie udalo sie sprawdzic wersji: ' + e.message;
+      return;
+    }
+
+    if (info.error) {
+      badge.className = 'badge unknown';
+      badge.textContent = '?';
+      badge.title = 'Nie udalo sie sprawdzic wersji: ' + info.error;
+      badge.onclick = null;
+      return;
+    }
+
+    if (info.updateAvailable) {
+      badge.className = 'badge inactive';
+      badge.textContent = 'Update';
+      badge.title = `Dostepna aktualizacja: v${info.current} -> v${info.latest} (kliknij po instrukcje)`;
+      badge.onclick = () => alert(
+        `Dostepna nowsza wersja: v${info.latest} (masz v${info.current})\n\n` +
+        'Na serwerze:\n' +
+        '  cd /opt/cdn-caddy\n' +
+        '  sudo -u cdnadmin git pull\n' +
+        '  sudo systemctl restart cdn-caddy'
+      );
+    } else {
+      badge.className = 'badge active';
+      badge.textContent = 'STABLE';
+      badge.title = `Masz najnowsza wersje (v${info.current})`;
+      badge.onclick = null;
+    }
   }
 
   function tickClock() {
