@@ -105,7 +105,7 @@
 
       version_check_fail: 'Nie udalo sie sprawdzic wersji: ',
       update_available_title: 'Dostepna aktualizacja: v{current} -> v{latest} (kliknij, zeby pobrac)',
-      update_confirm: 'Dostepna nowsza wersja: v{latest} (masz v{current}).\n\nPobrac teraz? (git pull + npm install na serwerze)\nPo zakonczeniu trzeba jeszcze recznie zrestartowac usluge:\n  sudo systemctl restart cdn-caddy',
+      update_confirm: 'Dostepna nowsza wersja: v{latest} (masz v{current}).\n\nPobrac teraz? (git pull + npm install na serwerze)\n\nUWAGA: ten przycisk NIE odswieza uprawnien sudo. Jesli aktualizacja dodala nowa funkcje wymagajaca sudo, przycisk moze nie wystarczyc - w razie bledow typu "sudo: a password is required" uruchom recznie przez SSH: sudo ./update.sh (on i tak zrobi restart uslugi).\n\nJesli mimo to klikasz ten przycisk: po zakonczeniu trzeba jeszcze recznie zrestartowac usluge:\n  sudo systemctl restart cdn-caddy',
       updating_label: 'Aktualizuje...',
       restart_required_label: 'Restart wymagany',
       restart_required_title: 'Pliki zaktualizowane - uruchom: sudo systemctl restart cdn-caddy',
@@ -251,7 +251,7 @@
 
       version_check_fail: 'Failed to check version: ',
       update_available_title: 'Update available: v{current} -> v{latest} (click to download)',
-      update_confirm: 'Newer version available: v{latest} (you have v{current}).\n\nDownload now? (git pull + npm install on the server)\nAfterwards you still need to manually restart the service:\n  sudo systemctl restart cdn-caddy',
+      update_confirm: 'Newer version available: v{latest} (you have v{current}).\n\nDownload now? (git pull + npm install on the server)\n\nNOTE: this button does NOT refresh sudo permissions. If the update added a new feature requiring sudo, this button may not be enough - if you see errors like "sudo: a password is required", run this manually via SSH instead: sudo ./update.sh (it also restarts the service).\n\nIf you still click this button: afterwards you need to manually restart the service:\n  sudo systemctl restart cdn-caddy',
       updating_label: 'Updating...',
       restart_required_label: 'Restart required',
       restart_required_title: 'Files updated - run: sudo systemctl restart cdn-caddy',
