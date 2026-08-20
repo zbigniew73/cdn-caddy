@@ -96,4 +96,10 @@ function getStatus() {
   };
 }
 
-export { getStatus, saveAndTestApiKey, retestApiKey, removeApiKey };
+// Surowy klucz - TYLKO do wewnetrznego uzytku innych serwisow (np.
+// gcoreDns.js), nigdy nie wystawiany przez API na zewnatrz.
+function getApiKey() {
+  return readConfig().apiKey || null;
+}
+
+export { getStatus, saveAndTestApiKey, retestApiKey, removeApiKey, getApiKey };

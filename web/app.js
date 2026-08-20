@@ -9,6 +9,8 @@
   const clockEl = document.getElementById('footer-clock');
 
   let activeTab = 'dashboard';
+  let gcoreEditingZone = null;
+  let gcoreEditingRecord = null;
 
   async function api(path, opts) {
     const res = await fetch('/api' + path, Object.assign({ credentials: 'same-origin' }, opts));
@@ -140,10 +142,52 @@
       content.innerHTML = `<p class="error-msg">${escapeHtml(e.message)}</p>`;
       return;
     }
-    renderGcoreTiles(status);
+
+    const connected = Boolean(status.configured && status.lastTest && status.lastTest.ok);
+    let zonesSection = '';
+    let recordsSection = '';
+
+    if (connected) {
+      let zones = [];
+      let zonesError = null;
+      try {
+        zones = await api('/gcore/zones');
+      } catch (e) {
+        zonesError = e.message;
+      }
+      zonesSection = buildZonesSection(zones, zonesError);
+
+      if (gcoreEditingZone) {
+        let records = [];
+        let recordsError = null;
+        try {
+          records = await api(`/gcore/zones/${encodeURIComponent(gcoreEditingZone)}/records`);
+        } catch (e) {
+          recordsError = e.message;
+        }
+        recordsSection = buildRecordsSection(gcoreEditingZone, records, recordsError);
+      }
+    } else {
+      zonesSection = `
+        <div class="panel-block">
+          <h2>Zarzadzanie strefami DNS</h2>
+          <p class="empty-state">Najpierw skonfiguruj i przetestuj integracje API (kafelek "Integracja API" wyzej).</p>
+        </div>
+      `;
+    }
+
+    content.innerHTML = `
+      <div class="module-grid">${buildIntegrationTile(status)}${buildStatsTile(status)}</div>
+      ${zonesSection}
+      ${recordsSection}
+    `;
+
+    wireIntegrationTile();
+    if (connected) wireZonesSection();
+    if (connected && gcoreEditingZone) wireRecordsSection();
   }
 
-  function renderGcoreTiles(status) {
+  function buildIntegrationTile(status) {
     const lt = status.lastTest;
     const testBadge = !lt
       ? '<span class="badge unknown">nie testowano</span>'
@@ -151,7 +195,7 @@
         ? '<span class="badge active">polaczono</span>'
         : '<span class="badge inactive">blad</span>';
 
-    const integrationTile = `
+    return `
       <div class="panel-block">
         <h2>Integracja API</h2>
         ${status.configured ? `
@@ -177,26 +221,26 @@
         <div class="error-msg" id="gcore-form-error"></div>
       </div>
     `;
+  }
 
+  function buildStatsTile(status) {
+    const lt = status.lastTest;
     const statsBody = (lt && lt.ok && lt.client)
       ? `
-        <p class="empty-state">
-          Podglad odpowiedzi Gcore <code>/iam/clients/me</code> - pelne statystyki DNS
-          (liczba stref, rekordow itp.) doloza sie z modulem Managed DNS.
-        </p>
+        <p class="empty-state">Podglad odpowiedzi Gcore <code>/iam/clients/me</code>.</p>
         <pre class="output">${escapeHtml(JSON.stringify(lt.client, null, 2))}</pre>
       `
       : `<p class="empty-state">Dostepne po poprawnej integracji (kafelek obok).</p>`;
 
-    const statsTile = `
+    return `
       <div class="panel-block">
         <h2>Statystyki i informacje o koncie</h2>
         ${statsBody}
       </div>
     `;
+  }
 
-    content.innerHTML = `<div class="module-grid">${integrationTile}${statsTile}</div>`;
-
+  function wireIntegrationTile() {
     const saveBtn = document.getElementById('gcore-save-btn');
     if (saveBtn) {
       saveBtn.addEventListener('click', async () => {
@@ -206,12 +250,12 @@
         saveBtn.disabled = true;
         saveBtn.textContent = 'Zapisuje i testuje...';
         try {
-          const newStatus = await api('/gcore/apikey', {
+          await api('/gcore/apikey', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ apiKey: input.value })
           });
-          renderGcoreTiles(newStatus);
+          renderGcore();
         } catch (e) {
           errEl.textContent = e.message;
           saveBtn.disabled = false;
@@ -228,8 +272,8 @@
         retestBtn.disabled = true;
         retestBtn.textContent = 'Testowanie...';
         try {
-          const newStatus = await api('/gcore/test', { method: 'POST' });
-          renderGcoreTiles(newStatus);
+          await api('/gcore/test', { method: 'POST' });
+          renderGcore();
         } catch (e) {
           errEl.textContent = e.message;
           retestBtn.disabled = false;
@@ -244,11 +288,274 @@
         if (!confirm('Usunac zapisany klucz API Gcore?')) return;
         removeBtn.disabled = true;
         try {
-          const newStatus = await api('/gcore/apikey', { method: 'DELETE' });
-          renderGcoreTiles(newStatus);
+          gcoreEditingZone = null;
+          gcoreEditingRecord = null;
+          await api('/gcore/apikey', { method: 'DELETE' });
+          renderGcore();
         } catch (e) {
           document.getElementById('gcore-form-error').textContent = e.message;
           removeBtn.disabled = false;
+        }
+      });
+    }
+  }
+
+  function buildZonesSection(zones, zonesError) {
+    const rows = zonesError
+      ? `<tr><td colspan="5" class="error-msg">${escapeHtml(zonesError)}</td></tr>`
+      : zones.length === 0
+        ? `<tr><td colspan="5" class="empty-state">Brak stref.</td></tr>`
+        : zones.map((z) => `
+            <tr>
+              <td>${escapeHtml(z.name)}</td>
+              <td><span class="badge ${z.status === 'active' ? 'active' : 'unknown'}">${escapeHtml(z.status || '-')}</span></td>
+              <td>${z.recordsTotal ?? '-'}</td>
+              <td>${z.dnssecEnabled ? 'tak' : 'nie'}</td>
+              <td>
+                <div class="btn-row" style="margin-bottom:0;">
+                  <button class="btn secondary gcore-zone-edit-btn" data-zone="${escapeHtml(z.name)}">Edytuj</button>
+                  <button class="btn danger gcore-zone-delete-btn" data-zone="${escapeHtml(z.name)}">Usun</button>
+                </div>
+              </td>
+            </tr>
+          `).join('');
+
+    return `
+      <div class="panel-block">
+        <h2>Zarzadzanie strefami DNS</h2>
+        <div style="overflow-x:auto;">
+          <table class="zones">
+            <thead><tr><th>Strefa</th><th>Status</th><th>Rekordy</th><th>DNSSEC</th><th>Akcje</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <h2 style="margin-top:20px;">Dodaj nowa strefe do DNS</h2>
+        <div class="form-field">
+          <label>Nazwa domeny</label>
+          <input type="text" id="gcore-zone-name-input" placeholder="przyklad.pl">
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="gcore-zone-add-btn">Dodaj strefe</button>
+        </div>
+        <div class="error-msg" id="gcore-zone-form-error"></div>
+      </div>
+    `;
+  }
+
+  function wireZonesSection() {
+    document.querySelectorAll('.gcore-zone-edit-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        gcoreEditingZone = btn.dataset.zone;
+        gcoreEditingRecord = null;
+        renderGcore();
+      });
+    });
+
+    document.querySelectorAll('.gcore-zone-delete-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const zone = btn.dataset.zone;
+        if (!confirm(`Usunac strefe "${zone}" wraz ze wszystkimi rekordami?`)) return;
+        btn.disabled = true;
+        try {
+          await api(`/gcore/zones/${encodeURIComponent(zone)}`, { method: 'DELETE' });
+          if (gcoreEditingZone === zone) { gcoreEditingZone = null; gcoreEditingRecord = null; }
+          renderGcore();
+        } catch (e) {
+          document.getElementById('gcore-zone-form-error').textContent = e.message;
+          btn.disabled = false;
+        }
+      });
+    });
+
+    const addBtn = document.getElementById('gcore-zone-add-btn');
+    if (addBtn) {
+      addBtn.addEventListener('click', async () => {
+        const input = document.getElementById('gcore-zone-name-input');
+        const errEl = document.getElementById('gcore-zone-form-error');
+        errEl.textContent = '';
+        addBtn.disabled = true;
+        try {
+          await api('/gcore/zones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: input.value })
+          });
+          renderGcore();
+        } catch (e) {
+          errEl.textContent = e.message;
+          addBtn.disabled = false;
+        }
+      });
+    }
+  }
+
+  const GCORE_RECORD_TYPES = ['A', 'AAAA', 'CNAME', 'TXT', 'NS', 'MX', 'CAA', 'SRV'];
+
+  function buildRecordsSection(zoneName, records, recordsError) {
+    const rows = recordsError
+      ? `<tr><td colspan="5" class="error-msg">${escapeHtml(recordsError)}</td></tr>`
+      : records.length === 0
+        ? `<tr><td colspan="5" class="empty-state">Brak rekordow.</td></tr>`
+        : records.map((r) => {
+            const isEditing = gcoreEditingRecord && gcoreEditingRecord.name === r.name && gcoreEditingRecord.type === r.type;
+            if (isEditing) {
+              return `
+                <tr>
+                  <td>${escapeHtml(r.name)}</td>
+                  <td>${escapeHtml(r.type)}</td>
+                  <td><input type="number" id="gcore-record-edit-ttl" value="${r.ttl}" style="width:90px;"></td>
+                  <td><textarea id="gcore-record-edit-values" rows="3" style="width:100%;font-family:var(--mono);font-size:12px;">${escapeHtml(r.values.join('\n'))}</textarea></td>
+                  <td>
+                    <div class="btn-row" style="margin-bottom:0;">
+                      <button class="btn" id="gcore-record-save-btn">Zapisz</button>
+                      <button class="btn secondary" id="gcore-record-cancel-btn">Anuluj</button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }
+            return `
+              <tr>
+                <td>${escapeHtml(r.name)}</td>
+                <td>${escapeHtml(r.type)}</td>
+                <td>${r.ttl}</td>
+                <td style="font-family:var(--mono);font-size:12px;">${r.values.map(escapeHtml).join('<br>')}</td>
+                <td>
+                  <div class="btn-row" style="margin-bottom:0;">
+                    <button class="btn secondary gcore-record-edit-btn" data-name="${escapeHtml(r.name)}" data-type="${escapeHtml(r.type)}">Edytuj</button>
+                    <button class="btn danger gcore-record-delete-btn" data-name="${escapeHtml(r.name)}" data-type="${escapeHtml(r.type)}">Usun</button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('');
+
+    const typeOptions = GCORE_RECORD_TYPES.map((t) => `<option value="${t}">${t}</option>`).join('');
+
+    return `
+      <div class="panel-block">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Rekordy strefy: ${escapeHtml(zoneName)}</span>
+          <button class="secondary" id="gcore-records-close-btn">Zamknij</button>
+        </h2>
+        <div style="overflow-x:auto;">
+          <table class="zones">
+            <thead><tr><th>Nazwa</th><th>Typ</th><th>TTL</th><th>Wartosci</th><th>Akcje</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <h2 style="margin-top:20px;">Dodaj nowy rekord</h2>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Nazwa (pelna, np. www.${escapeHtml(zoneName)})</label>
+            <input type="text" id="gcore-record-add-name" placeholder="www.${escapeHtml(zoneName)}">
+          </div>
+          <div class="form-field">
+            <label>Typ</label>
+            <select id="gcore-record-add-type">${typeOptions}</select>
+          </div>
+          <div class="form-field">
+            <label>TTL</label>
+            <input type="number" id="gcore-record-add-ttl" value="300">
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Wartosc (jedna na linie; MX: "priorytet target", CAA: "flaga tag wartosc", SRV: "priorytet waga port target")</label>
+          <textarea id="gcore-record-add-values" rows="2" placeholder="np. 1.2.3.4" style="width:100%;font-family:var(--mono);font-size:12px;"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="gcore-record-add-btn">Dodaj rekord</button>
+        </div>
+        <div class="error-msg" id="gcore-record-form-error"></div>
+      </div>
+    `;
+  }
+
+  function wireRecordsSection() {
+    const closeBtn = document.getElementById('gcore-records-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        gcoreEditingZone = null;
+        gcoreEditingRecord = null;
+        renderGcore();
+      });
+    }
+
+    document.querySelectorAll('.gcore-record-edit-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        gcoreEditingRecord = { name: btn.dataset.name, type: btn.dataset.type };
+        renderGcore();
+      });
+    });
+
+    const saveBtn = document.getElementById('gcore-record-save-btn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        const ttl = document.getElementById('gcore-record-edit-ttl').value;
+        const values = document.getElementById('gcore-record-edit-values').value.split('\n').map((v) => v.trim()).filter(Boolean);
+        const errEl = document.getElementById('gcore-record-form-error');
+        errEl.textContent = '';
+        saveBtn.disabled = true;
+        try {
+          await api(`/gcore/zones/${encodeURIComponent(gcoreEditingZone)}/records/${encodeURIComponent(gcoreEditingRecord.type)}/${encodeURIComponent(gcoreEditingRecord.name)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ttl, values })
+          });
+          gcoreEditingRecord = null;
+          renderGcore();
+        } catch (e) {
+          errEl.textContent = e.message;
+          saveBtn.disabled = false;
+        }
+      });
+    }
+
+    const cancelBtn = document.getElementById('gcore-record-cancel-btn');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        gcoreEditingRecord = null;
+        renderGcore();
+      });
+    }
+
+    document.querySelectorAll('.gcore-record-delete-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const name = btn.dataset.name;
+        const type = btn.dataset.type;
+        if (!confirm(`Usunac rekord ${name} (${type})?`)) return;
+        btn.disabled = true;
+        try {
+          await api(`/gcore/zones/${encodeURIComponent(gcoreEditingZone)}/records/${encodeURIComponent(type)}/${encodeURIComponent(name)}`, { method: 'DELETE' });
+          if (gcoreEditingRecord && gcoreEditingRecord.name === name && gcoreEditingRecord.type === type) gcoreEditingRecord = null;
+          renderGcore();
+        } catch (e) {
+          document.getElementById('gcore-record-form-error').textContent = e.message;
+          btn.disabled = false;
+        }
+      });
+    });
+
+    const addBtn = document.getElementById('gcore-record-add-btn');
+    if (addBtn) {
+      addBtn.addEventListener('click', async () => {
+        const name = document.getElementById('gcore-record-add-name').value;
+        const type = document.getElementById('gcore-record-add-type').value;
+        const ttl = document.getElementById('gcore-record-add-ttl').value;
+        const values = document.getElementById('gcore-record-add-values').value.split('\n').map((v) => v.trim()).filter(Boolean);
+        const errEl = document.getElementById('gcore-record-form-error');
+        errEl.textContent = '';
+        addBtn.disabled = true;
+        try {
+          await api(`/gcore/zones/${encodeURIComponent(gcoreEditingZone)}/records`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, type, ttl, values })
+          });
+          renderGcore();
+        } catch (e) {
+          errEl.textContent = e.message;
+          addBtn.disabled = false;
         }
       });
     }

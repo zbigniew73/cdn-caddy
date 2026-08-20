@@ -3,6 +3,10 @@ import { getSystemStats } from '../services/systemStats.js';
 import { listServices } from '../services/systemServices.js';
 import { getStatus, saveAndTestApiKey, retestApiKey, removeApiKey } from '../services/gcore.js';
 import { checkForUpdate } from '../services/appUpdate.js';
+import {
+  listZones, createZone, deleteZone,
+  listRecords, createRecord, updateRecord, deleteRecord
+} from '../services/gcoreDns.js';
 
 const router = Router();
 
@@ -62,6 +66,62 @@ router.delete('/gcore/apikey', (req, res) => {
     res.json(getStatus());
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/gcore/zones', async (req, res) => {
+  try {
+    res.json(await listZones());
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.post('/gcore/zones', async (req, res) => {
+  try {
+    res.json(await createZone((req.body || {}).name));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.delete('/gcore/zones/:zone', async (req, res) => {
+  try {
+    res.json(await deleteZone(req.params.zone));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.get('/gcore/zones/:zone/records', async (req, res) => {
+  try {
+    res.json(await listRecords(req.params.zone));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.post('/gcore/zones/:zone/records', async (req, res) => {
+  try {
+    res.json(await createRecord(req.params.zone, req.body || {}));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.put('/gcore/zones/:zone/records/:type/:name', async (req, res) => {
+  try {
+    res.json(await updateRecord(req.params.zone, req.params.name, req.params.type, req.body || {}));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.delete('/gcore/zones/:zone/records/:type/:name', async (req, res) => {
+  try {
+    res.json(await deleteRecord(req.params.zone, req.params.name, req.params.type));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
   }
 });
 

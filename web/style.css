@@ -277,7 +277,9 @@ nav {
   margin-bottom: 4px;
 }
 
-.form-field input {
+.form-field input,
+.form-field select,
+.form-field textarea {
   width: 100%;
   max-width: 420px;
   padding: 8px 10px;
@@ -287,6 +289,35 @@ nav {
   color: var(--text);
   font-size: 13px;
   font-family: var(--mono);
+}
+
+.form-field textarea { max-width: 100%; resize: vertical; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+table.zones {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+table.zones th, table.zones td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+table.zones th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
 }
 
 pre.output {
