@@ -10,7 +10,7 @@ import {
 } from '../services/gcoreDns.js';
 import { listCertificates, issueCertificate, renewCertificate, deleteCertificate } from '../services/acmeCerts.js';
 import { getPoolConfig, savePoolConfig, saveMainPointHost, getDiscoveredPops, addPopPoint } from '../services/cdnPool.js';
-import { checkAndSetupMain, getLastMainCheck } from '../services/caddyConfig.js';
+import { checkAndSetupMain, getLastMainCheck, deploySite, getLastSiteCheck } from '../services/caddyConfig.js';
 
 const router = Router();
 
@@ -222,6 +222,22 @@ router.get('/cdn/caddy/main-check', (req, res) => {
 router.post('/cdn/caddy/main-check', async (req, res) => {
   try {
     res.json(await checkAndSetupMain());
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.get('/cdn/caddy/site-check', (req, res) => {
+  try {
+    res.json(getLastSiteCheck());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/cdn/caddy/site-check', async (req, res) => {
+  try {
+    res.json(await deploySite());
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
   }

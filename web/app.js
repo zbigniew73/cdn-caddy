@@ -713,18 +713,24 @@
     }
 
     let mainCheck = null;
+    let siteCheck = null;
     if (pool.mainPointHost) {
       try {
         mainCheck = await api('/cdn/caddy/main-check');
       } catch (e) {
         mainCheck = null;
       }
+      try {
+        siteCheck = await api('/cdn/caddy/site-check');
+      } catch (e) {
+        siteCheck = null;
+      }
     }
 
     content.innerHTML = `
       <div class="module-grid">${buildPoolTile(pool, poolError)}${buildPopsTile(popsData, popsError)}</div>
       <div class="module-grid">${buildMainPointTile(pool)}${buildPopPointTile()}</div>
-      ${pool.mainPointHost ? buildCaddyConfigSection(pool, mainCheck) : ''}
+      ${pool.mainPointHost ? buildCaddyConfigSection(pool, mainCheck, siteCheck) : ''}
     `;
 
     wirePoolTile();
@@ -773,27 +779,49 @@
     }
   }
 
-  function buildCaddyConfigSection(pool, mainCheck) {
-    const hasResult = Boolean(mainCheck && mainCheck.at);
-    const statusClass = hasResult ? (mainCheck.ok ? 'active' : 'inactive') : '';
-    const statusText = hasResult ? (mainCheck.ok ? t('caddy_step1_success') : t('caddy_step1_failed')) : '';
-    const timeText = hasResult ? fmtDateTime(mainCheck.at) : '';
-    const outputText = hasResult && mainCheck.log ? mainCheck.log : '';
-    const errorText = hasResult && !mainCheck.ok && mainCheck.error ? mainCheck.error : '';
+  function buildCaddyStepBlock(idPrefix, titleText, hintText, btnLabel, result) {
+    const hasResult = Boolean(result && result.at);
+    const statusClass = hasResult ? (result.ok ? 'active' : 'inactive') : '';
+    const statusText = hasResult ? (result.ok ? t('caddy_step_success') : t('caddy_step_failed')) : '';
+    const timeText = hasResult ? fmtDateTime(result.at) : '';
+    const outputText = hasResult && result.log ? result.log : '';
+    const errorText = hasResult && !result.ok && result.error ? result.error : '';
+
+    return `
+      <h2 style="margin-top:20px;">${titleText}</h2>
+      <p class="empty-state">${hintText}</p>
+      <div class="btn-row" style="align-items:center;">
+        <button class="btn" id="${idPrefix}-btn">${btnLabel}</button>
+        <span class="badge ${statusClass}" id="${idPrefix}-status" style="${hasResult ? '' : 'display:none;'}">${escapeHtml(statusText)}</span>
+        <span id="${idPrefix}-time" style="font-size:11px;color:var(--muted);font-family:var(--mono);${hasResult ? '' : 'display:none;'}">${escapeHtml(timeText)}</span>
+      </div>
+      <pre class="output" id="${idPrefix}-output" style="${outputText ? '' : 'display:none;'}">${escapeHtml(outputText)}</pre>
+      <div class="error-msg" id="${idPrefix}-error">${escapeHtml(errorText)}</div>
+    `;
+  }
+
+  function buildCaddyConfigSection(pool, mainCheck, siteCheck) {
+    const step1 = buildCaddyStepBlock(
+      'cdn-caddy-main-check',
+      t('caddy_step1_title'),
+      t('caddy_step1_hint', { host: escapeHtml(pool.mainPointHost) }),
+      t('caddy_step1_btn'),
+      mainCheck
+    );
+    const step2 = buildCaddyStepBlock(
+      'cdn-caddy-site-check',
+      t('caddy_step2_title'),
+      t('caddy_step2_hint', { domain: escapeHtml(pool.domain || '-') }),
+      t('caddy_step2_btn'),
+      siteCheck
+    );
 
     const caddyTile = `
       <div class="panel-block">
         <h2>${t('caddy_config_title')}</h2>
         <p class="empty-state">${t('caddy_config_placeholder')}</p>
-        <h2 style="margin-top:20px;">${t('caddy_step1_title')}</h2>
-        <p class="empty-state">${t('caddy_step1_hint', { host: escapeHtml(pool.mainPointHost) })}</p>
-        <div class="btn-row" style="align-items:center;">
-          <button class="btn" id="cdn-caddy-main-check-btn">${t('caddy_step1_btn')}</button>
-          <span class="badge ${statusClass}" id="cdn-caddy-main-check-status" style="${hasResult ? '' : 'display:none;'}">${escapeHtml(statusText)}</span>
-          <span id="cdn-caddy-main-check-time" style="font-size:11px;color:var(--muted);font-family:var(--mono);${hasResult ? '' : 'display:none;'}">${escapeHtml(timeText)}</span>
-        </div>
-        <pre class="output" id="cdn-caddy-main-check-output" style="${outputText ? '' : 'display:none;'}">${escapeHtml(outputText)}</pre>
-        <div class="error-msg" id="cdn-caddy-main-check-error">${escapeHtml(errorText)}</div>
+        ${step1}
+        ${step2}
       </div>
     `;
     const infoTile = `
@@ -805,42 +833,47 @@
     return `<div class="module-grid">${caddyTile}${infoTile}</div>`;
   }
 
-  function wireCaddyConfigSection() {
-    const checkBtn = document.getElementById('cdn-caddy-main-check-btn');
+  function wireCaddyStep(idPrefix, apiPath, btnLabel) {
+    const checkBtn = document.getElementById(`${idPrefix}-btn`);
     if (checkBtn) {
       checkBtn.addEventListener('click', async () => {
-        const errEl = document.getElementById('cdn-caddy-main-check-error');
-        const outEl = document.getElementById('cdn-caddy-main-check-output');
-        const statusEl = document.getElementById('cdn-caddy-main-check-status');
-        const timeEl = document.getElementById('cdn-caddy-main-check-time');
+        const errEl = document.getElementById(`${idPrefix}-error`);
+        const outEl = document.getElementById(`${idPrefix}-output`);
+        const statusEl = document.getElementById(`${idPrefix}-status`);
+        const timeEl = document.getElementById(`${idPrefix}-time`);
         errEl.textContent = '';
         outEl.style.display = 'none';
         statusEl.style.display = 'none';
         timeEl.style.display = 'none';
         checkBtn.disabled = true;
-        checkBtn.textContent = t('caddy_step1_running');
+        checkBtn.textContent = t('caddy_step_running');
         try {
-          const result = await api('/cdn/caddy/main-check', { method: 'POST' });
+          const result = await api(apiPath, { method: 'POST' });
           outEl.textContent = result.log;
           outEl.style.display = 'block';
           statusEl.className = 'badge active';
-          statusEl.textContent = t('caddy_step1_success');
+          statusEl.textContent = t('caddy_step_success');
           statusEl.style.display = 'inline-block';
           timeEl.textContent = fmtDateTime(result.at);
           timeEl.style.display = 'inline';
         } catch (e) {
           errEl.textContent = e.message;
           statusEl.className = 'badge inactive';
-          statusEl.textContent = t('caddy_step1_failed');
+          statusEl.textContent = t('caddy_step_failed');
           statusEl.style.display = 'inline-block';
           timeEl.textContent = fmtDateTime(new Date().toISOString());
           timeEl.style.display = 'inline';
         } finally {
           checkBtn.disabled = false;
-          checkBtn.textContent = t('caddy_step1_btn');
+          checkBtn.textContent = btnLabel;
         }
       });
     }
+  }
+
+  function wireCaddyConfigSection() {
+    wireCaddyStep('cdn-caddy-main-check', '/cdn/caddy/main-check', t('caddy_step1_btn'));
+    wireCaddyStep('cdn-caddy-site-check', '/cdn/caddy/site-check', t('caddy_step2_btn'));
   }
 
   function buildPopPointTile() {

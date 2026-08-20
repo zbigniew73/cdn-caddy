@@ -3,6 +3,8 @@ import path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
+import { getPoolConfig } from './cdnPool.js';
+import { getCertInfo } from './acmeCerts.js';
 
 const execFileAsync = promisify(execFile);
 const SCRIPTS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '../scripts');
@@ -13,27 +15,36 @@ const SCRIPTS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '../
 const MAIN_CADDYFILE = '/etc/caddy/Caddyfile';
 const EXEC_OPTS = { timeout: 30000, maxBuffer: 5 * 1024 * 1024 };
 
-// Wynik ostatniego sprawdzenia zapisany na dysku (jak lastTest w
-// gcore.js), zeby przetrwal odswiezenie strony - nie tylko stan w
+// Wyniki ostatnich sprawdzen zapisane na dysku (jak lastTest w
+// gcore.js), zeby przetrwaly odswiezenie strony - nie tylko stan w
 // pamieci przegladarki.
 const DATA_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../data');
-const STATE_FILE = path.join(DATA_DIR, 'caddy-main-check.json');
+const MAIN_STATE_FILE = path.join(DATA_DIR, 'caddy-main-check.json');
+const SITE_STATE_FILE = path.join(DATA_DIR, 'caddy-site-check.json');
 
-function readState() {
+function fieldError(msg) {
+  return Object.assign(new Error(msg), { status: 400 });
+}
+
+function readJson(file) {
   try {
-    return JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
+    return JSON.parse(fs.readFileSync(file, 'utf-8'));
   } catch {
     return null;
   }
 }
 
-function writeState(state) {
+function writeJson(file, data) {
   fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
 function getLastMainCheck() {
-  return readState();
+  return readJson(MAIN_STATE_FILE);
+}
+
+function getLastSiteCheck() {
+  return readJson(SITE_STATE_FILE);
 }
 
 function runError(step, e) {
@@ -64,13 +75,51 @@ async function checkAndSetupMain() {
     log.push('$ caddy-validate.sh ' + MAIN_CADDYFILE, await runSudoScript('Walidacja glownego Caddyfile', 'caddy-validate.sh', [MAIN_CADDYFILE]));
   } catch (e) {
     const result = { ok: false, at, log: log.join('\n'), error: e.message };
-    writeState(result);
+    writeJson(MAIN_STATE_FILE, result);
     throw e;
   }
 
   const result = { ok: true, at, log: log.join('\n'), error: null };
-  writeState(result);
+  writeJson(MAIN_STATE_FILE, result);
   return result;
 }
 
-export { checkAndSetupMain, getLastMainCheck };
+// Punkt 2: wdraza podstawowy site-config CDN dla domeny puli (patrz
+// kafelek "Pula CDN") - kopiuje juz wystawiony cert (zakladka
+// Certyfikaty TLS) do /etc/caddy/certs/, zapisuje
+// /etc/caddy/sites/<domena>.caddy, po czym waliduje/przeladowuje tak
+// samo jak krok 1.
+async function deploySite() {
+  const { domain } = getPoolConfig();
+  if (!domain) throw fieldError('Najpierw ustaw domene puli (kafelek "Pula CDN").');
+
+  const cert = getCertInfo(domain);
+  if (!cert) {
+    throw fieldError(`Brak wystawionego certyfikatu dla "${domain}" - wystaw go najpierw w zakladce Gcore DNS -> Certyfikaty TLS.`);
+  }
+
+  const log = [];
+  const at = new Date().toISOString();
+  const siteFile = `/etc/caddy/sites/${domain}.caddy`;
+
+  try {
+    log.push(
+      `$ caddy-deploy-site.sh ${domain}`,
+      await runSudoScript('Wdrazanie plikow site-configu', 'caddy-deploy-site.sh', [domain, cert.certPath, cert.keyPath])
+    );
+    log.push(
+      `$ caddy-validate.sh ${siteFile}`,
+      await runSudoScript('Walidacja site-configu CDN', 'caddy-validate.sh', [siteFile])
+    );
+  } catch (e) {
+    const result = { ok: false, at, log: log.join('\n'), error: e.message, domain };
+    writeJson(SITE_STATE_FILE, result);
+    throw e;
+  }
+
+  const result = { ok: true, at, log: log.join('\n'), error: null, domain };
+  writeJson(SITE_STATE_FILE, result);
+  return result;
+}
+
+export { checkAndSetupMain, getLastMainCheck, deploySite, getLastSiteCheck };

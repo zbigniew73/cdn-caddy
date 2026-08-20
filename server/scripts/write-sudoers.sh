@@ -16,7 +16,9 @@
 #    caddy-env-setup.sh,
 #  - format/adapt/validate/reload konkretnego pliku Caddyfile pod
 #    /etc/caddy/ - patrz caddy-validate.sh (uzywane przez modul
-#    "Konfiguracja Caddy" w zakladce Caddy CDN).
+#    "Konfiguracja Caddy" w zakladce Caddy CDN),
+#  - kopiowanie wystawionego certu do /etc/caddy/certs/ + zapis
+#    site-configu CDN w /etc/caddy/sites/ - patrz caddy-deploy-site.sh.
 # Kolejne moduly doloza tu wlasne, rownie wasko przyciete Cmnd_Alias-y.
 
 set -euo pipefail
@@ -29,8 +31,9 @@ cat > "$SUDOERS_TMP" <<EOF
 Cmnd_Alias CDNCADDY_PAM_CHECK = ${INSTALL_DIR}/server/scripts/pam-login-check.cjs *
 Cmnd_Alias CDNCADDY_CADDY_ENV_SETUP = ${INSTALL_DIR}/server/scripts/caddy-env-setup.sh
 Cmnd_Alias CDNCADDY_CADDY_VALIDATE = ${INSTALL_DIR}/server/scripts/caddy-validate.sh *
+Cmnd_Alias CDNCADDY_CADDY_DEPLOY_SITE = ${INSTALL_DIR}/server/scripts/caddy-deploy-site.sh *
 
-${SVC_USER} ALL=(root) NOPASSWD: CDNCADDY_PAM_CHECK, CDNCADDY_CADDY_ENV_SETUP, CDNCADDY_CADDY_VALIDATE
+${SVC_USER} ALL=(root) NOPASSWD: CDNCADDY_PAM_CHECK, CDNCADDY_CADDY_ENV_SETUP, CDNCADDY_CADDY_VALIDATE, CDNCADDY_CADDY_DEPLOY_SITE
 EOF
 
 if visudo -c -f "$SUDOERS_TMP" >/dev/null 2>&1; then
