@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { listRecords, findZoneForDomain } from './gcoreDns.js';
 
 // Podstawowa konfiguracja "puli CDN" (domena, pod ktora dzialaja wszystkie
 // POP-y - routing po tokenie w sciezce, np. cdn.24z.eu/<token>/plik - patrz
@@ -48,18 +49,51 @@ function listPops() {
   return readState().pops;
 }
 
-function addPop({ name, host, region }) {
+// Sprawdza realny stan DNS domeny puli (rekordy A/AAAA dla nazwy rownej
+// tej domenie, w strefie Gcore, do ktorej nalezy) i oznacza kazdy POP z
+// listy jako aktywny, jesli jego adres faktycznie tam odpowiada. To NA
+// RAZIE tylko "czy jest w puli DNS" - pelna weryfikacja konfiguracji
+// (Caddy dziala, cert zaladowany itp.) to osobny, przyszly krok.
+async function getPopsWithStatus() {
+  const state = readState();
+
+  if (!state.domain) {
+    return { pops: state.pops.map((p) => ({ ...p, active: false })), checked: false, dnsError: null };
+  }
+
+  let dnsIps = [];
+  let dnsError = null;
+  try {
+    const zoneName = await findZoneForDomain(state.domain);
+    if (!zoneName) {
+      throw new Error(`Nie znaleziono w Gcore strefy dla domeny puli "${state.domain}".`);
+    }
+    const records = await listRecords(zoneName);
+    dnsIps = records
+      .filter((r) => r.name === state.domain && (r.type === 'A' || r.type === 'AAAA'))
+      .flatMap((r) => r.values);
+  } catch (e) {
+    dnsError = e.message;
+  }
+
+  return {
+    pops: state.pops.map((p) => ({ ...p, active: dnsIps.includes(p.host) })),
+    checked: !dnsError,
+    dnsError
+  };
+}
+
+function addPop({ name, host }) {
   const trimmedName = (name || '').trim();
   const trimmedHost = (host || '').trim();
-  if (!trimmedName) throw fieldError('Podaj nazwe POP-a.');
-  if (!trimmedHost) throw fieldError('Podaj adres (IP lub host) POP-a.');
+  if (!trimmedName) throw fieldError('Podaj nazwe (host) POP-a.');
+  if (!trimmedHost) throw fieldError('Podaj adres IP POP-a.');
 
   const state = readState();
   const pop = {
     id: crypto.randomUUID(),
     name: trimmedName,
     host: trimmedHost,
-    region: (region || '').trim(),
     addedAt: new Date().toISOString()
   };
   state.pops.push(pop);
@@ -67,19 +101,18 @@ function addPop({ name, host, region }) {
   return pop;
 }
 
-function updatePop(id, { name, host, region }) {
+function updatePop(id, { name, host }) {
   const state = readState();
   const pop = state.pops.find((p) => p.id === id);
   if (!pop) throw fieldError('Nie znaleziono POP-a o podanym id.');
 
   const trimmedName = (name || '').trim();
   const trimmedHost = (host || '').trim();
-  if (!trimmedName) throw fieldError('Podaj nazwe POP-a.');
-  if (!trimmedHost) throw fieldError('Podaj adres (IP lub host) POP-a.');
+  if (!trimmedName) throw fieldError('Podaj nazwe (host) POP-a.');
+  if (!trimmedHost) throw fieldError('Podaj adres IP POP-a.');
 
   pop.name = trimmedName;
   pop.host = trimmedHost;
-  pop.region = (region || '').trim();
   writeState(state);
   return pop;
 }
@@ -93,4 +126,4 @@ function deletePop(id) {
   return { ok: true };
 }
 
-export { getPoolConfig, savePoolConfig, listPops, addPop, updatePop, deletePop };
+export { getPoolConfig, savePoolConfig, listPops, getPopsWithStatus, addPop, updatePop, deletePop };

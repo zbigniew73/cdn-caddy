@@ -704,15 +704,15 @@
       poolError = e.message;
     }
 
-    let pops = [];
+    let popsData = { pops: [], checked: false, dnsError: null };
     let popsError = null;
     try {
-      pops = await api('/cdn/pops');
+      popsData = await api('/cdn/pops');
     } catch (e) {
       popsError = e.message;
     }
 
-    content.innerHTML = `<div class="module-grid">${buildPoolTile(pool, poolError)}${buildPopsTile(pops, popsError)}</div>`;
+    content.innerHTML = `<div class="module-grid">${buildPoolTile(pool, poolError)}${buildPopsTile(popsData, popsError)}</div>`;
 
     wirePoolTile();
     wirePopsTile();
@@ -759,30 +759,40 @@
     }
   }
 
-  function buildPopsTile(pops, popsError) {
+  function buildPopsTile(popsData, popsError) {
+    const pops = popsData.pops || [];
     const rows = popsError
       ? `<tr><td colspan="4" class="error-msg">${escapeHtml(popsError)}</td></tr>`
       : pops.length === 0
         ? `<tr><td colspan="4" class="empty-state">${t('pops_empty')}</td></tr>`
-        : pops.map((p) => `
+        : pops.map((p) => {
+            const statusBadge = !popsData.checked
+              ? `<span class="badge unknown">${t('pop_status_unknown')}</span>`
+              : p.active
+                ? `<span class="badge active">${t('pop_status_active')}</span>`
+                : `<span class="badge inactive">${t('pop_status_inactive')}</span>`;
+            return `
             <tr>
               <td>${escapeHtml(p.name)}</td>
               <td style="font-family:var(--mono);font-size:12px;">${escapeHtml(p.host)}</td>
-              <td>${escapeHtml(p.region || '-')}</td>
+              <td>${statusBadge}</td>
               <td>
                 <div class="btn-row" style="margin-bottom:0;">
                   <button class="btn danger cdn-pop-delete-btn" data-id="${escapeHtml(p.id)}" data-name="${escapeHtml(p.name)}">${t('delete_btn')}</button>
                 </div>
               </td>
             </tr>
-          `).join('');
+          `;
+          }).join('');
 
     return `
       <div class="panel-block">
         <h2>${t('pops_tile_title')}</h2>
+        <p class="empty-state">${t('pops_dns_note')}</p>
+        ${popsData.dnsError ? `<p class="error-msg">${t('pops_dns_check_failed')}${escapeHtml(popsData.dnsError)}</p>` : ''}
         <div style="overflow-x:auto;">
           <table class="zones">
-            <thead><tr><th>${t('th_name')}</th><th>${t('th_pop_host')}</th><th>${t('th_pop_region')}</th><th>${t('th_actions')}</th></tr></thead>
+            <thead><tr><th>${t('th_pop_host')}</th><th>${t('th_pop_ip')}</th><th>${t('th_pop_status')}</th><th>${t('th_actions')}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -795,10 +805,6 @@
           <div class="form-field">
             <label>${t('pop_host_label')}</label>
             <input type="text" id="cdn-pop-host-input" placeholder="203.0.113.10">
-          </div>
-          <div class="form-field">
-            <label>${t('pop_region_label')}</label>
-            <input type="text" id="cdn-pop-region-input" placeholder="US East">
           </div>
         </div>
         <div class="btn-row">
@@ -831,7 +837,6 @@
       addBtn.addEventListener('click', async () => {
         const name = document.getElementById('cdn-pop-name-input').value;
         const host = document.getElementById('cdn-pop-host-input').value;
-        const region = document.getElementById('cdn-pop-region-input').value;
         const errEl = document.getElementById('cdn-pop-form-error');
         errEl.textContent = '';
         addBtn.disabled = true;
@@ -839,7 +844,7 @@
           await api('/cdn/pops', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, host, region })
+            body: JSON.stringify({ name, host })
           });
           renderCdn();
         } catch (e) {

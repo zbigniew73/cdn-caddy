@@ -9,7 +9,7 @@ import {
   listRecords, createRecord, updateRecord, deleteRecord
 } from '../services/gcoreDns.js';
 import { listCertificates, issueCertificate, renewCertificate, deleteCertificate } from '../services/acmeCerts.js';
-import { getPoolConfig, savePoolConfig, listPops, addPop, updatePop, deletePop } from '../services/cdnPool.js';
+import { getPoolConfig, savePoolConfig, getPopsWithStatus, addPop, updatePop, deletePop } from '../services/cdnPool.js';
 
 const router = Router();
 
@@ -186,9 +186,9 @@ router.put('/cdn/pool', (req, res) => {
   }
 });
 
-router.get('/cdn/pops', (req, res) => {
+router.get('/cdn/pops', async (req, res) => {
   try {
-    res.json(listPops());
+    res.json(await getPopsWithStatus());
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
