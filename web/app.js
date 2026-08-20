@@ -319,7 +319,7 @@
         : zones.map((z) => `
             <tr>
               <td>${escapeHtml(z.name)}</td>
-              <td><span class="badge ${z.status === 'active' ? 'active' : 'inactive'}" title="${escapeHtml(z.status || '-')}">${z.status === 'active' ? 'Aktywny' : 'NIE AKTYWNY'}</span></td>
+              <td><span class="badge ${z.status === 'active' ? 'active' : 'inactive'}" title="${escapeHtml(z.status || '-')}">${z.status === 'active' ? 'Delegated' : 'Non Delegated'}</span></td>
               <td>${z.recordsTotal ?? '-'}</td>
               <td>${z.dnssecEnabled ? 'tak' : 'nie'}</td>
               <td>
