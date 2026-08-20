@@ -1,3 +1,4 @@
 node_modules/
 .env
 *.log
+caddy_cdn_gcore.md
