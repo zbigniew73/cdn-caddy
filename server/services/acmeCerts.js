@@ -144,4 +144,27 @@ function deleteCertificate(domain) {
   fs.rmSync(domainDir(domain), { recursive: true, force: true });
 }
 
-export { listCertificates, issueCertificate, renewCertificate, deleteCertificate, getCertInfo };
+// Odnawia wszystkie certyfikaty, ktorym zostalo mniej niz thresholdDays
+// do wygasniecia (domyslnie 30 - jak certbot). Wywolywane cyklicznie
+// przez scheduler w renewScheduler.js.
+async function renewExpiringCertificates(thresholdDays = 30) {
+  const thresholdMs = thresholdDays * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const results = [];
+
+  for (const cert of listCertificates()) {
+    const msLeft = new Date(cert.notAfter).getTime() - now;
+    if (msLeft > thresholdMs) continue;
+
+    try {
+      await renewCertificate(cert.domain);
+      results.push({ domain: cert.domain, ok: true });
+    } catch (e) {
+      results.push({ domain: cert.domain, ok: false, error: e.message });
+    }
+  }
+
+  return results;
+}
+
+export { listCertificates, issueCertificate, renewCertificate, renewExpiringCertificates, deleteCertificate, getCertInfo };

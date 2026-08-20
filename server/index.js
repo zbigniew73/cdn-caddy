@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js';
 import apiRoutes from './routes/api.js';
 import { requireAuth, getAllowedUsers, isSameOrigin } from './services/auth.js';
 import { APP_VERSION } from './version.js';
+import { startAutoRenewScheduler } from './services/renewScheduler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -152,4 +153,6 @@ app.listen(PORT, HOST, () => {
     console.log('Upewnij sie, ze reverse proxy proxyuje do tego adresu i port nie jest otwarty bezposrednio na firewallu.');
   }
   console.log('');
+
+  startAutoRenewScheduler();
 });

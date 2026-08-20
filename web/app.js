@@ -424,6 +424,7 @@
     return `
       <div class="panel-block">
         <h2>Certyfikaty TLS (DNS-01)</h2>
+        <p class="empty-state">Odnawiane automatycznie, gdy zostanie mniej niz 30 dni do wygasniecia (sprawdzane raz dziennie, dopoki usluga panelu dziala) - przycisk "Odnow" jest tylko na wypadek, gdybys nie chcial czekac.</p>
         <div style="overflow-x:auto;">
           <table class="zones">
             <thead><tr><th>Domena</th><th>Srodowisko</th><th>Wazny od</th><th>Wazny do</th><th>Plik</th><th>Akcje</th></tr></thead>
