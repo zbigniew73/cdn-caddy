@@ -1,3 +1,3 @@
-const APP_VERSION = '0.2.0';
+const APP_VERSION = '0.3.0';
 
 export { APP_VERSION };
