@@ -849,8 +849,8 @@
         ? `<tr><td colspan="3" class="empty-state">${t('pop_servers_empty')}</td></tr>`
         : servers.map((s) => `
             <tr>
-              <td style="text-align:center;">${escapeHtml(s.host)}</td>
-              <td style="text-align:center;font-family:var(--mono);font-size:12px;">${escapeHtml(s.ip)}</td>
+              <td style="text-align:center;vertical-align:middle;">${escapeHtml(s.host)}</td>
+              <td style="text-align:center;vertical-align:middle;font-family:var(--mono);font-size:12px;">${escapeHtml(s.ip)}</td>
               <td>
                 <div class="btn-row" style="margin-bottom:0;">
                   <button class="btn secondary" disabled title="${t('pop_servers_sync_soon')}">${t('pop_servers_sync_btn')}</button>
