@@ -1,0 +1,17 @@
+[Unit]
+Description=CDN Caddy Dashboard
+After=network.target
+
+[Service]
+Type=simple
+
+WorkingDirectory=/opt/cdn-caddy
+EnvironmentFile=/opt/cdn-caddy/.env
+
+ExecStart=/usr/bin/node server/index.js
+Restart=on-failure
+
+User=twoj-user
+
+[Install]
+WantedBy=multi-user.target
