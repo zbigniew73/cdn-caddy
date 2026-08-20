@@ -431,7 +431,7 @@
           </table>
         </div>
         <h2 style="margin-top:20px;">Wystaw nowy certyfikat</h2>
-        <p class="empty-state">Domena musi byc jednoczesnie nazwa strefy zarzadzanej w Gcore (sekcja wyzej) - DNS-01 tworzy tymczasowy rekord TXT w tej strefie.</p>
+        <p class="empty-state">Domena moze byc strefa (np. 24z.eu) albo jej poddomena (np. cdn.24z.eu) - wlasciwa strefa do wpisu TXT znajdowana jest automatycznie z listy powyzej.</p>
         <div class="form-grid">
           <div class="form-field">
             <label>Domena</label>

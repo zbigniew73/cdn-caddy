@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import * as acme from 'acme-client';
-import { createRecord, deleteRecord } from './gcoreDns.js';
+import { createRecord, deleteRecord, findZoneForDomain } from './gcoreDns.js';
 
 // Wystawianie certow Let's Encrypt metoda DNS-01 - jedyna sensowna dla
 // cdn.24z.eu (GeoDNS Gcore odpowiada roznym IP wg lokalizacji, wiec
@@ -73,6 +73,17 @@ async function issueCertificate(domain, { staging = true, email } = {}) {
   const trimmed = (domain || '').trim().replace(/\.$/, '');
   if (!trimmed) throw fieldError('Podaj domene.');
 
+  // Domena moze byc sama strefa (apex) albo jej poddomena (np.
+  // "cdn.24z.eu" jest rekordem w strefie "24z.eu", nie wlasna strefa) -
+  // znajdz strefe, w ktorej trzeba utworzyc tymczasowy rekord TXT.
+  const zoneName = await findZoneForDomain(trimmed);
+  if (!zoneName) {
+    throw fieldError(
+      `Nie znaleziono w Gcore strefy dla domeny "${trimmed}" - dodaj odpowiednia strefe ` +
+      '(np. jej domene nadrzedna) w sekcji "Zarzadzanie strefami DNS" powyzej.'
+    );
+  }
+
   const accountKey = await getAccountKey();
   const client = new acme.Client({
     directoryUrl: staging ? acme.directory.letsencrypt.staging : acme.directory.letsencrypt.production,
@@ -93,14 +104,14 @@ async function issueCertificate(domain, { staging = true, email } = {}) {
           throw new Error('Obslugiwane jest wylacznie wyzwanie DNS-01.');
         }
         const recordName = `_acme-challenge.${authz.identifier.value}`;
-        await createRecord(trimmed, { name: recordName, type: 'TXT', ttl: 60, values: [keyAuthorization] });
+        await createRecord(zoneName, { name: recordName, type: 'TXT', ttl: 60, values: [keyAuthorization] });
         // Krotki bufor na propagacje w sieci Gcore przed pierwsza proba
         // walidacji - biblioteka i tak ponawia z backoffem (10x, 5-30s).
         await new Promise((resolve) => setTimeout(resolve, 5000));
       },
       challengeRemoveFn: async (authz) => {
         const recordName = `_acme-challenge.${authz.identifier.value}`;
-        await deleteRecord(trimmed, recordName, 'TXT').catch(() => {});
+        await deleteRecord(zoneName, recordName, 'TXT').catch(() => {});
       }
     });
   } catch (e) {

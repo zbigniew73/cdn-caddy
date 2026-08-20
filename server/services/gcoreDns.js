@@ -52,6 +52,24 @@ async function listZones() {
   }));
 }
 
+// Znajduje strefe zarzadzana w Gcore, do ktorej nalezy dana domena -
+// domena moze byc sama strefa (apex) albo jej poddomena (np.
+// "cdn.24z.eu" nalezy do strefy "24z.eu", nie jest wlasna strefa).
+// Uzywane przez modul certyfikatow DNS-01, zeby wiedziec, w ktorej
+// strefie utworzyc tymczasowy rekord TXT.
+async function findZoneForDomain(domain) {
+  const zones = await listZones();
+  const candidates = zones
+    .map((z) => z.name)
+    .filter((name) => domain === name || domain.endsWith(`.${name}`));
+
+  if (candidates.length === 0) return null;
+
+  // Najdluzsza nazwa = najbardziej szczegolowe dopasowanie.
+  candidates.sort((a, b) => b.length - a.length);
+  return candidates[0];
+}
+
 async function createZone(name) {
   const trimmed = (name || '').trim().replace(/\.$/, '');
   if (!trimmed) throw fieldError('Podaj nazwe strefy.');
@@ -129,4 +147,4 @@ async function deleteRecord(zoneName, name, type) {
   return { ok: true };
 }
 
-export { SUPPORTED_TYPES, listZones, createZone, deleteZone, listRecords, createRecord, updateRecord, deleteRecord };
+export { SUPPORTED_TYPES, listZones, createZone, deleteZone, listRecords, createRecord, updateRecord, deleteRecord, findZoneForDomain };
