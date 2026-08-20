@@ -15,6 +15,7 @@
       tab_dashboard: 'Dashboard',
       tab_services: 'Uslugi',
       tab_gcore: 'Gcore DNS',
+      tab_cdn: 'Caddy CDN',
 
       loading: 'Wczytywanie...',
       cpu: 'CPU',
@@ -110,7 +111,22 @@
       restart_required_title: 'Pliki zaktualizowane - uruchom: sudo systemctl restart cdn-caddy',
       update_success_alert: 'Zaktualizowano pliki na dysku.\n\nTeraz zrestartuj usluge:\n  sudo systemctl restart cdn-caddy',
       update_fail_alert: 'Aktualizacja nie powiodla sie:\n\n{error}',
-      stable_title: 'Masz najnowsza wersje (v{current})'
+      stable_title: 'Masz najnowsza wersje (v{current})',
+
+      pool_tile_title: 'Pula CDN',
+      pool_domain_label: 'Domena puli CDN',
+      pool_domain_hint: 'Domena, pod ktora dzialaja wszystkie POP-y (routing po tokenie w sciezce, np. cdn.24z.eu/&lt;token&gt;/plik).',
+      pool_not_configured: 'Nie skonfigurowano.',
+      pops_tile_title: 'Lista punktow POP',
+      pops_empty: 'Brak dodanych punktow POP.',
+      th_pop_host: 'Adres',
+      th_pop_region: 'Region',
+      add_pop_title: 'Dodaj punkt POP',
+      pop_name_label: 'Nazwa (np. USA, BER, MAD)',
+      pop_host_label: 'Adres (IP lub host)',
+      pop_region_label: 'Region (opcjonalnie)',
+      add_pop_btn: 'Dodaj POP',
+      delete_pop_confirm: 'Usunac punkt POP "{name}"?'
     },
     en: {
       login_placeholder: 'username',
@@ -125,6 +141,7 @@
       tab_dashboard: 'Dashboard',
       tab_services: 'Services',
       tab_gcore: 'Gcore DNS',
+      tab_cdn: 'Caddy CDN',
 
       loading: 'Loading...',
       cpu: 'CPU',
@@ -220,7 +237,22 @@
       restart_required_title: 'Files updated - run: sudo systemctl restart cdn-caddy',
       update_success_alert: 'Files updated on disk.\n\nNow restart the service:\n  sudo systemctl restart cdn-caddy',
       update_fail_alert: 'Update failed:\n\n{error}',
-      stable_title: 'You have the latest version (v{current})'
+      stable_title: 'You have the latest version (v{current})',
+
+      pool_tile_title: 'CDN Pool',
+      pool_domain_label: 'CDN pool domain',
+      pool_domain_hint: 'The domain all POPs serve under (path-based token routing, e.g. cdn.24z.eu/&lt;token&gt;/file).',
+      pool_not_configured: 'Not configured yet.',
+      pops_tile_title: 'POP list',
+      pops_empty: 'No POP points added yet.',
+      th_pop_host: 'Address',
+      th_pop_region: 'Region',
+      add_pop_title: 'Add POP point',
+      pop_name_label: 'Name (e.g. USA, BER, MAD)',
+      pop_host_label: 'Address (IP or hostname)',
+      pop_region_label: 'Region (optional)',
+      add_pop_btn: 'Add POP',
+      delete_pop_confirm: 'Delete POP point "{name}"?'
     }
   };
 

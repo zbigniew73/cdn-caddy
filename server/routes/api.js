@@ -9,6 +9,7 @@ import {
   listRecords, createRecord, updateRecord, deleteRecord
 } from '../services/gcoreDns.js';
 import { listCertificates, issueCertificate, renewCertificate, deleteCertificate } from '../services/acmeCerts.js';
+import { getPoolConfig, savePoolConfig, listPops, addPop, updatePop, deletePop } from '../services/cdnPool.js';
 
 const router = Router();
 
@@ -166,6 +167,54 @@ router.delete('/gcore/certs/:domain', (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/cdn/pool', (req, res) => {
+  try {
+    res.json(getPoolConfig());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.put('/cdn/pool', (req, res) => {
+  try {
+    res.json(savePoolConfig((req.body || {}).domain));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.get('/cdn/pops', (req, res) => {
+  try {
+    res.json(listPops());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/cdn/pops', (req, res) => {
+  try {
+    res.json(addPop(req.body || {}));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.put('/cdn/pops/:id', (req, res) => {
+  try {
+    res.json(updatePop(req.params.id, req.body || {}));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.delete('/cdn/pops/:id', (req, res) => {
+  try {
+    res.json(deletePop(req.params.id));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
   }
 });
 
