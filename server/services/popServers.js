@@ -33,6 +33,10 @@ function listPopServers() {
   return readState();
 }
 
+function getPopServer(id) {
+  return readState().find((s) => s.id === id) || null;
+}
+
 function addPopServer({ host, ip }) {
   const trimmedHost = (host || '').trim();
   const trimmedIp = (ip || '').trim();
@@ -59,4 +63,4 @@ function deletePopServer(id) {
   return { ok: true };
 }
 
-export { listPopServers, addPopServer, deletePopServer };
+export { listPopServers, getPopServer, addPopServer, deletePopServer };

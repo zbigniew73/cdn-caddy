@@ -12,6 +12,7 @@ import { listCertificates, issueCertificate, renewCertificate, deleteCertificate
 import { getPoolConfig, savePoolConfig, saveMainPointHost, getDiscoveredPops, addPopPoint } from '../services/cdnPool.js';
 import { checkAndSetupMain, getLastMainCheck, deploySite, getLastSiteCheck } from '../services/caddyConfig.js';
 import { listPopServers, addPopServer, deletePopServer } from '../services/popServers.js';
+import { getDeployInfo, syncPopServer, getLastSync, getAllLastSyncs } from '../services/popDeploy.js';
 
 const router = Router();
 
@@ -263,6 +264,38 @@ router.post('/cdn/pop-servers', (req, res) => {
 router.delete('/cdn/pop-servers/:id', (req, res) => {
   try {
     res.json(deletePopServer(req.params.id));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.get('/cdn/pop-servers/deploy-info', async (req, res) => {
+  try {
+    res.json(await getDeployInfo());
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.get('/cdn/pop-servers/sync-state', (req, res) => {
+  try {
+    res.json(getAllLastSyncs());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/cdn/pop-servers/:id/sync', (req, res) => {
+  try {
+    res.json(getLastSync(req.params.id));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/cdn/pop-servers/:id/sync', async (req, res) => {
+  try {
+    res.json(await syncPopServer(req.params.id));
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
   }

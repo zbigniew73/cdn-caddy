@@ -720,6 +720,20 @@
       popServersError = e.message;
     }
 
+    let syncStates = {};
+    try {
+      syncStates = await api('/cdn/pop-servers/sync-state');
+    } catch (e) {
+      syncStates = {};
+    }
+
+    let deployInfo = null;
+    try {
+      deployInfo = await api('/cdn/pop-servers/deploy-info');
+    } catch (e) {
+      deployInfo = null;
+    }
+
     let mainCheck = null;
     let siteCheck = null;
     if (pool.mainPointHost) {
@@ -737,7 +751,7 @@
 
     content.innerHTML = `
       <div class="module-grid">${buildPoolTile(pool, poolError)}${buildPopsTile(popsData, popsError)}</div>
-      <div class="module-grid">${buildMainPointTile(pool)}${buildPopServersTile(popServers, popServersError)}</div>
+      <div class="module-grid">${buildMainPointTile(pool)}${buildPopServersTile(popServers, popServersError, syncStates, deployInfo)}</div>
       ${pool.mainPointHost ? buildCaddyConfigSection(pool, mainCheck, siteCheck) : ''}
     `;
 
@@ -841,24 +855,48 @@
     return `<div class="module-grid">${caddyTile}${infoTile}</div>`;
   }
 
-  function buildPopServersTile(popServers, popServersError) {
+  function buildPopServersTile(popServers, popServersError, syncStates, deployInfo) {
     const servers = popServers || [];
+    const states = syncStates || {};
+
     const rows = popServersError
-      ? `<tr><td colspan="3" class="error-msg">${escapeHtml(popServersError)}</td></tr>`
+      ? `<tr><td colspan="4" class="error-msg">${escapeHtml(popServersError)}</td></tr>`
       : servers.length === 0
-        ? `<tr><td colspan="3" class="empty-state">${t('pop_servers_empty')}</td></tr>`
-        : servers.map((s) => `
+        ? `<tr><td colspan="4" class="empty-state">${t('pop_servers_empty')}</td></tr>`
+        : servers.map((s) => {
+            const st = states[s.id];
+            const hasResult = Boolean(st && st.at);
+            const statusClass = hasResult ? (st.ok ? 'active' : 'inactive') : 'unknown';
+            const statusText = hasResult ? (st.ok ? t('caddy_step_success') : t('caddy_step_failed')) : t('pop_servers_not_synced');
+            return `
             <tr>
               <td style="text-align:center;vertical-align:middle;">${escapeHtml(s.host)}</td>
               <td style="text-align:center;vertical-align:middle;font-family:var(--mono);font-size:12px;">${escapeHtml(s.ip)}</td>
+              <td style="text-align:center;vertical-align:middle;">
+                <span class="badge ${statusClass}" id="cdn-pop-sync-status-${escapeHtml(s.id)}">${escapeHtml(statusText)}</span>
+              </td>
               <td>
                 <div class="btn-row" style="margin-bottom:0;">
-                  <button class="btn secondary" disabled title="${t('pop_servers_sync_soon')}">${t('pop_servers_sync_btn')}</button>
+                  <button class="btn secondary cdn-pop-server-sync-btn" id="cdn-pop-sync-btn-${escapeHtml(s.id)}" data-id="${escapeHtml(s.id)}" data-host="${escapeHtml(s.host)}">${t('pop_servers_sync_btn')}</button>
                   <button class="btn danger cdn-pop-server-delete-btn" data-id="${escapeHtml(s.id)}" data-host="${escapeHtml(s.host)}">${t('delete_btn')}</button>
                 </div>
               </td>
             </tr>
-          `).join('');
+          `;
+          }).join('');
+
+    const deployBlock = deployInfo ? `
+      <h2 style="margin-top:20px;">${t('pop_servers_deploy_title')}</h2>
+      <p class="empty-state">${t('pop_servers_deploy_hint', { path: escapeHtml(deployInfo.remoteAgentPath) })}</p>
+      <div class="form-field">
+        <label>${t('pop_servers_deploy_script_label')}</label>
+        <pre class="output">${escapeHtml(deployInfo.agentScript)}</pre>
+      </div>
+      <div class="form-field">
+        <label>${t('pop_servers_deploy_key_label')}</label>
+        <pre class="output">${escapeHtml(deployInfo.authorizedKeysLine)}</pre>
+      </div>
+    ` : '';
 
     return `
       <div class="panel-block">
@@ -866,10 +904,12 @@
         <p class="empty-state">${t('pop_servers_hint')}</p>
         <div style="overflow-x:auto;">
           <table class="zones">
-            <thead><tr><th style="text-align:center;">${t('th_pop_host')}</th><th style="text-align:center;">${t('th_pop_ip')}</th><th>${t('th_actions')}</th></tr></thead>
+            <thead><tr><th style="text-align:center;">${t('th_pop_host')}</th><th style="text-align:center;">${t('th_pop_ip')}</th><th style="text-align:center;">${t('th_pop_sync_status')}</th><th>${t('th_actions')}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
+        <pre class="output" id="cdn-pop-sync-log" style="display:none;"></pre>
+        <div class="error-msg" id="cdn-pop-server-form-error"></div>
         <h2 style="margin-top:20px;">${t('pop_servers_add_title')}</h2>
         <div class="form-grid">
           <div class="form-field">
@@ -884,7 +924,7 @@
         <div class="btn-row">
           <button class="btn" id="cdn-pop-server-add-btn">${t('pop_servers_add_btn')}</button>
         </div>
-        <div class="error-msg" id="cdn-pop-server-form-error"></div>
+        ${deployBlock}
       </div>
     `;
   }
@@ -902,6 +942,34 @@
         } catch (e) {
           document.getElementById('cdn-pop-server-form-error').textContent = e.message;
           btn.disabled = false;
+        }
+      });
+    });
+
+    document.querySelectorAll('.cdn-pop-server-sync-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const host = btn.dataset.host;
+        const statusEl = document.getElementById(`cdn-pop-sync-status-${id}`);
+        const logEl = document.getElementById('cdn-pop-sync-log');
+        const errEl = document.getElementById('cdn-pop-server-form-error');
+        errEl.textContent = '';
+        logEl.style.display = 'none';
+        btn.disabled = true;
+        btn.textContent = t('pop_servers_sync_running');
+        try {
+          const result = await api(`/cdn/pop-servers/${encodeURIComponent(id)}/sync`, { method: 'POST' });
+          statusEl.className = 'badge active';
+          statusEl.textContent = t('caddy_step_success');
+          logEl.textContent = `${host}:\n${result.log}`;
+          logEl.style.display = 'block';
+        } catch (e) {
+          statusEl.className = 'badge inactive';
+          statusEl.textContent = t('caddy_step_failed');
+          errEl.textContent = e.message;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = t('pop_servers_sync_btn');
         }
       });
     });
