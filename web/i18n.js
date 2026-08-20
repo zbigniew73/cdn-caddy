@@ -1,0 +1,266 @@
+(function () {
+  'use strict';
+
+  var DICT = {
+    pl: {
+      login_placeholder: 'login',
+      password_placeholder: 'haslo',
+      login_btn: 'Zaloguj',
+      login_error_generic: 'Blad logowania',
+
+      theme_btn: 'Motyw',
+      logout_btn: 'Wyloguj',
+
+      nav_main: 'Glowne',
+      tab_dashboard: 'Dashboard',
+      tab_services: 'Uslugi',
+      tab_gcore: 'Gcore DNS',
+
+      loading: 'Wczytywanie...',
+      cpu: 'CPU',
+      ram: 'RAM',
+      swap: 'SWAP',
+      swap_none: 'brak',
+      disk: 'DYSK',
+      host: 'HOST',
+      uptime: 'UPTIME',
+      cores_suffix: 'rdzeni',
+
+      not_found: 'nie znaleziono',
+
+      integration_title: 'Integracja API',
+      status_untested: 'nie testowano',
+      status_connected: 'polaczono',
+      status_error: 'blad',
+      saved_key_label: 'Zapisany klucz',
+      status_label: 'Status:',
+      retest_btn: 'Testuj polaczenie ponownie',
+      retest_btn_loading: 'Testowanie...',
+      remove_key_btn: 'Usun klucz',
+      remove_key_confirm: 'Usunac zapisany klucz API Gcore?',
+      api_key_label: 'Klucz API Gcore (Customer Portal &rarr; API tokens)',
+      api_key_placeholder: 'wklej klucz API',
+      save_test_btn: 'Zapisz i przetestuj',
+      save_test_btn_loading: 'Zapisuje i testuje...',
+
+      stats_title: 'Statystyki i informacje o koncie',
+      stats_preview: 'Podglad odpowiedzi Gcore <code>/iam/clients/me</code>.',
+      stats_empty: 'Dostepne po poprawnej integracji (kafelek obok).',
+
+      zones_title: 'Zarzadzanie strefami DNS',
+      zones_gate_msg: 'Najpierw skonfiguruj i przetestuj integracje API (kafelek "Integracja API" wyzej).',
+      zones_empty: 'Brak stref.',
+      th_zone: 'Strefa',
+      th_status: 'Status',
+      th_records: 'Rekordy',
+      th_dnssec: 'DNSSEC',
+      th_actions: 'Akcje',
+      yes: 'tak',
+      no: 'nie',
+      add_zone_title: 'Dodaj nowa strefe do DNS',
+      domain_name_label: 'Nazwa domeny',
+      add_zone_btn: 'Dodaj strefe',
+      delete_zone_confirm: 'Usunac strefe "{zone}" wraz ze wszystkimi rekordami?',
+
+      certs_title: 'Certyfikaty TLS (DNS-01)',
+      certs_autorenew_note: 'Odnawiane automatycznie, gdy zostanie mniej niz 30 dni do wygasniecia (sprawdzane raz dziennie, dopoki usluga panelu dziala) - przycisk "Odnow" jest tylko na wypadek, gdybys nie chcial czekac.',
+      certs_empty: 'Brak wystawionych certyfikatow.',
+      th_domain: 'Domena',
+      th_environment: 'Srodowisko',
+      th_valid_from: 'Wazny od',
+      th_valid_to: 'Wazny do',
+      th_file: 'Plik',
+      cert_env_staging: 'Aktywny',
+      cert_env_production: 'Produkcja',
+      renew_btn: 'Odnow',
+      renew_btn_loading: 'Odnawiam...',
+      delete_cert_confirm: 'Usunac zapisany certyfikat dla "{domain}" z dysku panelu?',
+      issue_new_cert_title: 'Wystaw nowy certyfikat',
+      cert_domain_hint: 'Domena moze byc strefa (np. 24z.eu) albo jej poddomena (np. cdn.24z.eu) - wlasciwa strefa do wpisu TXT znajdowana jest automatycznie z listy powyzej.',
+      domain_label: 'Domena',
+      email_label: 'Kontakt e-mail (opcjonalnie)',
+      staging_checkbox_label: "Let's Encrypt staging (testowy, wyzsze limity, przegladarki NIE ufaja temu certowi) - odznacz dla prawdziwego certyfikatu produkcyjnego",
+      issue_cert_btn: 'Wystaw certyfikat',
+      issue_progress: 'Wystawianie w toku (walidacja DNS-01) - moze to potrwac do 1-2 minut, nie zamykaj tej karty...',
+
+      records_title_prefix: 'Rekordy strefy:',
+      close_btn: 'Zamknij',
+      th_name: 'Nazwa',
+      th_type: 'Typ',
+      th_ttl: 'TTL',
+      th_values: 'Wartosci',
+      records_empty: 'Brak rekordow.',
+      save_btn: 'Zapisz',
+      cancel_btn: 'Anuluj',
+      edit_btn: 'Edytuj',
+      delete_btn: 'Usun',
+      add_record_title: 'Dodaj nowy rekord',
+      record_name_label: 'Nazwa (pelna, np. www.{zone})',
+      record_type_label: 'Typ',
+      record_ttl_label: 'TTL',
+      record_value_label: 'Wartosc (jedna na linie; MX: "priorytet target", CAA: "flaga tag wartosc", SRV: "priorytet waga port target")',
+      add_record_btn: 'Dodaj rekord',
+      delete_record_confirm: 'Usunac rekord {name} ({type})?',
+
+      version_check_fail: 'Nie udalo sie sprawdzic wersji: ',
+      update_available_title: 'Dostepna aktualizacja: v{current} -> v{latest} (kliknij, zeby pobrac)',
+      update_confirm: 'Dostepna nowsza wersja: v{latest} (masz v{current}).\n\nPobrac teraz? (git pull + npm install na serwerze)\nPo zakonczeniu trzeba jeszcze recznie zrestartowac usluge:\n  sudo systemctl restart cdn-caddy',
+      updating_label: 'Aktualizuje...',
+      restart_required_label: 'Restart wymagany',
+      restart_required_title: 'Pliki zaktualizowane - uruchom: sudo systemctl restart cdn-caddy',
+      update_success_alert: 'Zaktualizowano pliki na dysku.\n\nTeraz zrestartuj usluge:\n  sudo systemctl restart cdn-caddy',
+      update_fail_alert: 'Aktualizacja nie powiodla sie:\n\n{error}',
+      stable_title: 'Masz najnowsza wersje (v{current})'
+    },
+    en: {
+      login_placeholder: 'username',
+      password_placeholder: 'password',
+      login_btn: 'Log in',
+      login_error_generic: 'Login failed',
+
+      theme_btn: 'Theme',
+      logout_btn: 'Log out',
+
+      nav_main: 'Main',
+      tab_dashboard: 'Dashboard',
+      tab_services: 'Services',
+      tab_gcore: 'Gcore DNS',
+
+      loading: 'Loading...',
+      cpu: 'CPU',
+      ram: 'RAM',
+      swap: 'SWAP',
+      swap_none: 'none',
+      disk: 'DISK',
+      host: 'HOST',
+      uptime: 'UPTIME',
+      cores_suffix: 'cores',
+
+      not_found: 'not found',
+
+      integration_title: 'API Integration',
+      status_untested: 'not tested',
+      status_connected: 'connected',
+      status_error: 'error',
+      saved_key_label: 'Saved key',
+      status_label: 'Status:',
+      retest_btn: 'Test connection again',
+      retest_btn_loading: 'Testing...',
+      remove_key_btn: 'Remove key',
+      remove_key_confirm: 'Remove the saved Gcore API key?',
+      api_key_label: 'Gcore API key (Customer Portal &rarr; API tokens)',
+      api_key_placeholder: 'paste API key',
+      save_test_btn: 'Save and test',
+      save_test_btn_loading: 'Saving and testing...',
+
+      stats_title: 'Account statistics and info',
+      stats_preview: 'Preview of the Gcore <code>/iam/clients/me</code> response.',
+      stats_empty: 'Available once integration succeeds (tile next to this one).',
+
+      zones_title: 'DNS zone management',
+      zones_gate_msg: 'First configure and test the API integration ("API Integration" tile above).',
+      zones_empty: 'No zones.',
+      th_zone: 'Zone',
+      th_status: 'Status',
+      th_records: 'Records',
+      th_dnssec: 'DNSSEC',
+      th_actions: 'Actions',
+      yes: 'yes',
+      no: 'no',
+      add_zone_title: 'Add new zone to DNS',
+      domain_name_label: 'Domain name',
+      add_zone_btn: 'Add zone',
+      delete_zone_confirm: 'Delete zone "{zone}" along with all its records?',
+
+      certs_title: 'TLS Certificates (DNS-01)',
+      certs_autorenew_note: 'Renewed automatically once fewer than 30 days remain before expiry (checked once a day, as long as the panel service is running) - the "Renew" button is only there in case you do not want to wait.',
+      certs_empty: 'No certificates issued yet.',
+      th_domain: 'Domain',
+      th_environment: 'Environment',
+      th_valid_from: 'Valid from',
+      th_valid_to: 'Valid to',
+      th_file: 'File',
+      cert_env_staging: 'Active',
+      cert_env_production: 'Production',
+      renew_btn: 'Renew',
+      renew_btn_loading: 'Renewing...',
+      delete_cert_confirm: 'Delete the saved certificate for "{domain}" from the panel disk?',
+      issue_new_cert_title: 'Issue new certificate',
+      cert_domain_hint: 'The domain can be a zone itself (e.g. 24z.eu) or its subdomain (e.g. cdn.24z.eu) - the right zone for the TXT record is found automatically from the list above.',
+      domain_label: 'Domain',
+      email_label: 'Contact email (optional)',
+      staging_checkbox_label: "Let's Encrypt staging (test mode, higher limits, browsers do NOT trust this cert) - uncheck for a real production certificate",
+      issue_cert_btn: 'Issue certificate',
+      issue_progress: 'Issuance in progress (DNS-01 validation) - this can take up to 1-2 minutes, do not close this tab...',
+
+      records_title_prefix: 'Zone records:',
+      close_btn: 'Close',
+      th_name: 'Name',
+      th_type: 'Type',
+      th_ttl: 'TTL',
+      th_values: 'Values',
+      records_empty: 'No records.',
+      save_btn: 'Save',
+      cancel_btn: 'Cancel',
+      edit_btn: 'Edit',
+      delete_btn: 'Delete',
+      add_record_title: 'Add new record',
+      record_name_label: 'Name (full, e.g. www.{zone})',
+      record_type_label: 'Type',
+      record_ttl_label: 'TTL',
+      record_value_label: 'Value (one per line; MX: "priority target", CAA: "flag tag value", SRV: "priority weight port target")',
+      add_record_btn: 'Add record',
+      delete_record_confirm: 'Delete record {name} ({type})?',
+
+      version_check_fail: 'Failed to check version: ',
+      update_available_title: 'Update available: v{current} -> v{latest} (click to download)',
+      update_confirm: 'Newer version available: v{latest} (you have v{current}).\n\nDownload now? (git pull + npm install on the server)\nAfterwards you still need to manually restart the service:\n  sudo systemctl restart cdn-caddy',
+      updating_label: 'Updating...',
+      restart_required_label: 'Restart required',
+      restart_required_title: 'Files updated - run: sudo systemctl restart cdn-caddy',
+      update_success_alert: 'Files updated on disk.\n\nNow restart the service:\n  sudo systemctl restart cdn-caddy',
+      update_fail_alert: 'Update failed:\n\n{error}',
+      stable_title: 'You have the latest version (v{current})'
+    }
+  };
+
+  function getLang() {
+    try {
+      var saved = localStorage.getItem('cc-lang');
+      return saved === 'en' ? 'en' : 'pl';
+    } catch (e) {
+      return 'pl';
+    }
+  }
+
+  function setLang(lang) {
+    try { localStorage.setItem('cc-lang', lang === 'en' ? 'en' : 'pl'); } catch (e) {}
+  }
+
+  function locale() {
+    return getLang() === 'en' ? 'en-US' : 'pl-PL';
+  }
+
+  function t(key, params) {
+    var lang = getLang();
+    var str = (DICT[lang] && DICT[lang][key] !== undefined) ? DICT[lang][key] : (DICT.pl[key] !== undefined ? DICT.pl[key] : key);
+    if (params) {
+      Object.keys(params).forEach(function (k) {
+        str = str.split('{' + k + '}').join(params[k]);
+      });
+    }
+    return str;
+  }
+
+  function applyStaticTranslations() {
+    document.documentElement.setAttribute('lang', getLang());
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      el.textContent = t(el.getAttribute('data-i18n'));
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
+      el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')));
+    });
+  }
+
+  window.CC_I18N = { t: t, getLang: getLang, setLang: setLang, locale: locale, applyStaticTranslations: applyStaticTranslations };
+})();

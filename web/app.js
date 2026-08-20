@@ -8,6 +8,8 @@
   const currentUserEl = document.getElementById('current-user');
   const clockEl = document.getElementById('footer-clock');
 
+  const { t, getLang, setLang, locale, applyStaticTranslations } = window.CC_I18N;
+
   let activeTab = 'dashboard';
   let gcoreEditingZone = null;
   let gcoreEditingRecord = null;
@@ -69,7 +71,7 @@
   }
 
   async function renderDashboard() {
-    content.innerHTML = '<p>Wczytywanie...</p>';
+    content.innerHTML = `<p>${t('loading')}</p>`;
     let info = {};
     try {
       info = await api('/system/summary');
@@ -78,25 +80,25 @@
       return;
     }
 
-    const cpuDetail = info.cpu ? `${info.cpu.model || '-'} (${info.cpu.cores} rdzeni)` : '';
+    const cpuDetail = info.cpu ? `${info.cpu.model || '-'} (${info.cpu.cores} ${t('cores_suffix')})` : '';
     const ramDetail = info.memory ? `${fmtBytes(info.memory.usedBytes)} / ${fmtBytes(info.memory.totalBytes)}` : '';
     const swapDetail = info.swap ? `${fmtBytes(info.swap.usedBytes)} / ${fmtBytes(info.swap.totalBytes)}` : '';
     const diskDetail = info.disk ? `${fmtBytes(info.disk.usedBytes)} / ${fmtBytes(info.disk.totalBytes)}` : '';
 
     content.innerHTML = `
       <div class="system-grid">
-        ${meterTile('CPU', info.cpu ? info.cpu.usagePercent : 0, cpuDetail)}
-        ${meterTile('RAM', info.memory ? info.memory.usedPercent : 0, ramDetail)}
-        ${info.swap ? meterTile('SWAP', info.swap.usedPercent, swapDetail) : valueTile('SWAP', 'brak')}
-        ${info.disk ? meterTile('DYSK', info.disk.usedPercent, diskDetail) : valueTile('DYSK', '-')}
-        ${valueTile('HOST', info.hostname || '-')}
-        ${valueTile('UPTIME', fmtUptime(info.uptimeSeconds || 0))}
+        ${meterTile(t('cpu'), info.cpu ? info.cpu.usagePercent : 0, cpuDetail)}
+        ${meterTile(t('ram'), info.memory ? info.memory.usedPercent : 0, ramDetail)}
+        ${info.swap ? meterTile(t('swap'), info.swap.usedPercent, swapDetail) : valueTile(t('swap'), t('swap_none'))}
+        ${info.disk ? meterTile(t('disk'), info.disk.usedPercent, diskDetail) : valueTile(t('disk'), '-')}
+        ${valueTile(t('host'), info.hostname || '-')}
+        ${valueTile(t('uptime'), fmtUptime(info.uptimeSeconds || 0))}
       </div>
     `;
   }
 
   async function renderServices() {
-    content.innerHTML = '<p>Wczytywanie...</p>';
+    content.innerHTML = `<p>${t('loading')}</p>`;
     let services = [];
     try {
       services = await api('/system/services');
@@ -109,7 +111,7 @@
       <div class="grid">
         ${services.map((s) => {
           const badge = s.found ? badgeForState(s.activeState) : 'unknown';
-          const label = s.found ? `${s.activeState}${s.subState ? ' (' + s.subState + ')' : ''}` : 'nie znaleziono';
+          const label = s.found ? `${s.activeState}${s.subState ? ' (' + s.subState + ')' : ''}` : t('not_found');
           return `
             <div class="card">
               <div class="label">${s.label} (${s.unit})</div>
@@ -130,11 +132,11 @@
 
   function fmtDateTime(iso) {
     if (!iso) return '-';
-    try { return new Date(iso).toLocaleString('pl-PL'); } catch { return iso; }
+    try { return new Date(iso).toLocaleString(locale()); } catch { return iso; }
   }
 
   async function renderGcore() {
-    content.innerHTML = '<p>Wczytywanie...</p>';
+    content.innerHTML = `<p>${t('loading')}</p>`;
     let status;
     try {
       status = await api('/gcore/status');
@@ -180,8 +182,8 @@
     } else {
       zonesSection = `
         <div class="panel-block">
-          <h2>Zarzadzanie strefami DNS</h2>
-          <p class="empty-state">Najpierw skonfiguruj i przetestuj integracje API (kafelek "Integracja API" wyzej).</p>
+          <h2>${t('zones_title')}</h2>
+          <p class="empty-state">${t('zones_gate_msg')}</p>
         </div>
       `;
     }
@@ -201,32 +203,32 @@
   function buildIntegrationTile(status) {
     const lt = status.lastTest;
     const testBadge = !lt
-      ? '<span class="badge unknown">nie testowano</span>'
+      ? `<span class="badge unknown">${t('status_untested')}</span>`
       : lt.ok
-        ? '<span class="badge active">polaczono</span>'
-        : '<span class="badge inactive">blad</span>';
+        ? `<span class="badge active">${t('status_connected')}</span>`
+        : `<span class="badge inactive">${t('status_error')}</span>`;
 
     return `
       <div class="panel-block">
-        <h2>Integracja API</h2>
+        <h2>${t('integration_title')}</h2>
         ${status.configured ? `
           <div class="form-field">
-            <label>Zapisany klucz</label>
+            <label>${t('saved_key_label')}</label>
             <input type="text" value="${escapeHtml(status.maskedKey)}" disabled>
           </div>
-          <p>Status: ${testBadge} ${lt ? `<span style="font-size:11px;color:var(--muted);font-family:var(--mono);">(${fmtDateTime(lt.at)})</span>` : ''}</p>
+          <p>${t('status_label')} ${testBadge} ${lt ? `<span style="font-size:11px;color:var(--muted);font-family:var(--mono);">(${fmtDateTime(lt.at)})</span>` : ''}</p>
           ${lt && !lt.ok ? `<p class="error-msg">${escapeHtml(lt.error)}</p>` : ''}
           <div class="btn-row">
-            <button class="btn secondary" id="gcore-retest-btn">Testuj polaczenie ponownie</button>
-            <button class="btn danger" id="gcore-remove-btn">Usun klucz</button>
+            <button class="btn secondary" id="gcore-retest-btn">${t('retest_btn')}</button>
+            <button class="btn danger" id="gcore-remove-btn">${t('remove_key_btn')}</button>
           </div>
         ` : `
           <div class="form-field">
-            <label>Klucz API Gcore (Customer Portal &rarr; API tokens)</label>
-            <input type="password" id="gcore-apikey-input" placeholder="wklej klucz API" autocomplete="off">
+            <label>${t('api_key_label')}</label>
+            <input type="password" id="gcore-apikey-input" placeholder="${t('api_key_placeholder')}" autocomplete="off">
           </div>
           <div class="btn-row">
-            <button class="btn" id="gcore-save-btn">Zapisz i przetestuj</button>
+            <button class="btn" id="gcore-save-btn">${t('save_test_btn')}</button>
           </div>
         `}
         <div class="error-msg" id="gcore-form-error"></div>
@@ -238,14 +240,14 @@
     const lt = status.lastTest;
     const statsBody = (lt && lt.ok && lt.client)
       ? `
-        <p class="empty-state">Podglad odpowiedzi Gcore <code>/iam/clients/me</code>.</p>
+        <p class="empty-state">${t('stats_preview')}</p>
         <pre class="output">${escapeHtml(JSON.stringify(lt.client, null, 2))}</pre>
       `
-      : `<p class="empty-state">Dostepne po poprawnej integracji (kafelek obok).</p>`;
+      : `<p class="empty-state">${t('stats_empty')}</p>`;
 
     return `
       <div class="panel-block">
-        <h2>Statystyki i informacje o koncie</h2>
+        <h2>${t('stats_title')}</h2>
         ${statsBody}
       </div>
     `;
@@ -259,7 +261,7 @@
         const errEl = document.getElementById('gcore-form-error');
         errEl.textContent = '';
         saveBtn.disabled = true;
-        saveBtn.textContent = 'Zapisuje i testuje...';
+        saveBtn.textContent = t('save_test_btn_loading');
         try {
           await api('/gcore/apikey', {
             method: 'POST',
@@ -270,7 +272,7 @@
         } catch (e) {
           errEl.textContent = e.message;
           saveBtn.disabled = false;
-          saveBtn.textContent = 'Zapisz i przetestuj';
+          saveBtn.textContent = t('save_test_btn');
         }
       });
     }
@@ -281,14 +283,14 @@
         const errEl = document.getElementById('gcore-form-error');
         errEl.textContent = '';
         retestBtn.disabled = true;
-        retestBtn.textContent = 'Testowanie...';
+        retestBtn.textContent = t('retest_btn_loading');
         try {
           await api('/gcore/test', { method: 'POST' });
           renderGcore();
         } catch (e) {
           errEl.textContent = e.message;
           retestBtn.disabled = false;
-          retestBtn.textContent = 'Testuj polaczenie ponownie';
+          retestBtn.textContent = t('retest_btn');
         }
       });
     }
@@ -296,7 +298,7 @@
     const removeBtn = document.getElementById('gcore-remove-btn');
     if (removeBtn) {
       removeBtn.addEventListener('click', async () => {
-        if (!confirm('Usunac zapisany klucz API Gcore?')) return;
+        if (!confirm(t('remove_key_confirm'))) return;
         removeBtn.disabled = true;
         try {
           gcoreEditingZone = null;
@@ -315,17 +317,17 @@
     const rows = zonesError
       ? `<tr><td colspan="5" class="error-msg">${escapeHtml(zonesError)}</td></tr>`
       : zones.length === 0
-        ? `<tr><td colspan="5" class="empty-state">Brak stref.</td></tr>`
+        ? `<tr><td colspan="5" class="empty-state">${t('zones_empty')}</td></tr>`
         : zones.map((z) => `
             <tr>
               <td>${escapeHtml(z.name)}</td>
               <td><span class="badge ${z.status === 'active' ? 'active' : 'inactive'}" title="${escapeHtml(z.status || '-')}">${z.status === 'active' ? 'Delegated' : 'Non Delegated'}</span></td>
               <td>${z.recordsTotal ?? '-'}</td>
-              <td>${z.dnssecEnabled ? 'tak' : 'nie'}</td>
+              <td>${z.dnssecEnabled ? t('yes') : t('no')}</td>
               <td>
                 <div class="btn-row" style="margin-bottom:0;">
-                  <button class="btn secondary gcore-zone-edit-btn" data-zone="${escapeHtml(z.name)}">Edytuj</button>
-                  <button class="btn danger gcore-zone-delete-btn" data-zone="${escapeHtml(z.name)}">Usun</button>
+                  <button class="btn secondary gcore-zone-edit-btn" data-zone="${escapeHtml(z.name)}">${t('edit_btn')}</button>
+                  <button class="btn danger gcore-zone-delete-btn" data-zone="${escapeHtml(z.name)}">${t('delete_btn')}</button>
                 </div>
               </td>
             </tr>
@@ -333,20 +335,20 @@
 
     return `
       <div class="panel-block">
-        <h2>Zarzadzanie strefami DNS</h2>
+        <h2>${t('zones_title')}</h2>
         <div style="overflow-x:auto;">
           <table class="zones">
-            <thead><tr><th>Strefa</th><th>Status</th><th>Rekordy</th><th>DNSSEC</th><th>Akcje</th></tr></thead>
+            <thead><tr><th>${t('th_zone')}</th><th>${t('th_status')}</th><th>${t('th_records')}</th><th>${t('th_dnssec')}</th><th>${t('th_actions')}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
-        <h2 style="margin-top:20px;">Dodaj nowa strefe do DNS</h2>
+        <h2 style="margin-top:20px;">${t('add_zone_title')}</h2>
         <div class="form-field">
-          <label>Nazwa domeny</label>
+          <label>${t('domain_name_label')}</label>
           <input type="text" id="gcore-zone-name-input" placeholder="przyklad.pl">
         </div>
         <div class="btn-row">
-          <button class="btn" id="gcore-zone-add-btn">Dodaj strefe</button>
+          <button class="btn" id="gcore-zone-add-btn">${t('add_zone_btn')}</button>
         </div>
         <div class="error-msg" id="gcore-zone-form-error"></div>
       </div>
@@ -365,7 +367,7 @@
     document.querySelectorAll('.gcore-zone-delete-btn').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const zone = btn.dataset.zone;
-        if (!confirm(`Usunac strefe "${zone}" wraz ze wszystkimi rekordami?`)) return;
+        if (!confirm(t('delete_zone_confirm', { zone }))) return;
         btn.disabled = true;
         try {
           await api(`/gcore/zones/${encodeURIComponent(zone)}`, { method: 'DELETE' });
@@ -404,18 +406,18 @@
     const rows = certsError
       ? `<tr><td colspan="6" class="error-msg">${escapeHtml(certsError)}</td></tr>`
       : certs.length === 0
-        ? `<tr><td colspan="6" class="empty-state">Brak wystawionych certyfikatow.</td></tr>`
+        ? `<tr><td colspan="6" class="empty-state">${t('certs_empty')}</td></tr>`
         : certs.map((c) => `
             <tr>
               <td>${escapeHtml(c.domain)}</td>
-              <td><span class="badge active">${c.staging ? 'Aktywny' : 'Produkcja'}</span></td>
+              <td><span class="badge active">${c.staging ? t('cert_env_staging') : t('cert_env_production')}</span></td>
               <td>${fmtDateTime(c.notBefore)}</td>
               <td>${fmtDateTime(c.notAfter)}</td>
               <td style="font-family:var(--mono);font-size:11px;">${escapeHtml(c.certPath)}</td>
               <td>
                 <div class="btn-row" style="margin-bottom:0;">
-                  <button class="btn secondary gcore-cert-renew-btn" data-domain="${escapeHtml(c.domain)}">Odnow</button>
-                  <button class="btn danger gcore-cert-delete-btn" data-domain="${escapeHtml(c.domain)}">Usun</button>
+                  <button class="btn secondary gcore-cert-renew-btn" data-domain="${escapeHtml(c.domain)}">${t('renew_btn')}</button>
+                  <button class="btn danger gcore-cert-delete-btn" data-domain="${escapeHtml(c.domain)}">${t('delete_btn')}</button>
                 </div>
               </td>
             </tr>
@@ -423,36 +425,36 @@
 
     return `
       <div class="panel-block">
-        <h2>Certyfikaty TLS (DNS-01)</h2>
-        <p class="empty-state">Odnawiane automatycznie, gdy zostanie mniej niz 30 dni do wygasniecia (sprawdzane raz dziennie, dopoki usluga panelu dziala) - przycisk "Odnow" jest tylko na wypadek, gdybys nie chcial czekac.</p>
+        <h2>${t('certs_title')}</h2>
+        <p class="empty-state">${t('certs_autorenew_note')}</p>
         <div style="overflow-x:auto;">
           <table class="zones">
-            <thead><tr><th>Domena</th><th>Srodowisko</th><th>Wazny od</th><th>Wazny do</th><th>Plik</th><th>Akcje</th></tr></thead>
+            <thead><tr><th>${t('th_domain')}</th><th>${t('th_environment')}</th><th>${t('th_valid_from')}</th><th>${t('th_valid_to')}</th><th>${t('th_file')}</th><th>${t('th_actions')}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
-        <h2 style="margin-top:20px;">Wystaw nowy certyfikat</h2>
-        <p class="empty-state">Domena moze byc strefa (np. 24z.eu) albo jej poddomena (np. cdn.24z.eu) - wlasciwa strefa do wpisu TXT znajdowana jest automatycznie z listy powyzej.</p>
+        <h2 style="margin-top:20px;">${t('issue_new_cert_title')}</h2>
+        <p class="empty-state">${t('cert_domain_hint')}</p>
         <div class="form-grid">
           <div class="form-field">
-            <label>Domena</label>
+            <label>${t('domain_label')}</label>
             <input type="text" id="gcore-cert-domain-input" placeholder="cdn.24z.eu">
           </div>
           <div class="form-field">
-            <label>Kontakt e-mail (opcjonalnie)</label>
+            <label>${t('email_label')}</label>
             <input type="text" id="gcore-cert-email-input" placeholder="admin@24z.eu">
           </div>
         </div>
         <div class="form-field">
           <label style="display:flex;align-items:center;gap:8px;">
             <input type="checkbox" id="gcore-cert-staging-input" checked style="width:auto;">
-            Let's Encrypt staging (testowy, wyzsze limity, przegladarki NIE ufaja temu certowi) - odznacz dla prawdziwego certyfikatu produkcyjnego
+            ${t('staging_checkbox_label')}
           </label>
         </div>
         <div class="btn-row">
-          <button class="btn" id="gcore-cert-issue-btn">Wystaw certyfikat</button>
+          <button class="btn" id="gcore-cert-issue-btn">${t('issue_cert_btn')}</button>
         </div>
-        <p class="empty-state" id="gcore-cert-progress" style="display:none;">Wystawianie w toku (walidacja DNS-01) - moze to potrwac do 1-2 minut, nie zamykaj tej karty...</p>
+        <p class="empty-state" id="gcore-cert-progress" style="display:none;">${t('issue_progress')}</p>
         <div class="error-msg" id="gcore-cert-form-error"></div>
       </div>
     `;
@@ -465,14 +467,14 @@
         const errEl = document.getElementById('gcore-cert-form-error');
         errEl.textContent = '';
         btn.disabled = true;
-        btn.textContent = 'Odnawiam...';
+        btn.textContent = t('renew_btn_loading');
         try {
           await api(`/gcore/certs/${encodeURIComponent(domain)}/renew`, { method: 'POST' });
           renderGcore();
         } catch (e) {
           errEl.textContent = e.message;
           btn.disabled = false;
-          btn.textContent = 'Odnow';
+          btn.textContent = t('renew_btn');
         }
       });
     });
@@ -480,7 +482,7 @@
     document.querySelectorAll('.gcore-cert-delete-btn').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const domain = btn.dataset.domain;
-        if (!confirm(`Usunac zapisany certyfikat dla "${domain}" z dysku panelu?`)) return;
+        if (!confirm(t('delete_cert_confirm', { domain }))) return;
         btn.disabled = true;
         try {
           await api(`/gcore/certs/${encodeURIComponent(domain)}`, { method: 'DELETE' });
@@ -525,7 +527,7 @@
     const rows = recordsError
       ? `<tr><td colspan="5" class="error-msg">${escapeHtml(recordsError)}</td></tr>`
       : records.length === 0
-        ? `<tr><td colspan="5" class="empty-state">Brak rekordow.</td></tr>`
+        ? `<tr><td colspan="5" class="empty-state">${t('records_empty')}</td></tr>`
         : records.map((r) => {
             const isEditing = gcoreEditingRecord && gcoreEditingRecord.name === r.name && gcoreEditingRecord.type === r.type;
             if (isEditing) {
@@ -537,8 +539,8 @@
                   <td><textarea id="gcore-record-edit-values" rows="3" style="width:100%;font-family:var(--mono);font-size:12px;">${escapeHtml(r.values.join('\n'))}</textarea></td>
                   <td>
                     <div class="btn-row" style="margin-bottom:0;">
-                      <button class="btn" id="gcore-record-save-btn">Zapisz</button>
-                      <button class="btn secondary" id="gcore-record-cancel-btn">Anuluj</button>
+                      <button class="btn" id="gcore-record-save-btn">${t('save_btn')}</button>
+                      <button class="btn secondary" id="gcore-record-cancel-btn">${t('cancel_btn')}</button>
                     </div>
                   </td>
                 </tr>
@@ -552,49 +554,49 @@
                 <td style="font-family:var(--mono);font-size:12px;">${r.values.map(escapeHtml).join('<br>')}</td>
                 <td>
                   <div class="btn-row" style="margin-bottom:0;">
-                    <button class="btn secondary gcore-record-edit-btn" data-name="${escapeHtml(r.name)}" data-type="${escapeHtml(r.type)}">Edytuj</button>
-                    <button class="btn danger gcore-record-delete-btn" data-name="${escapeHtml(r.name)}" data-type="${escapeHtml(r.type)}">Usun</button>
+                    <button class="btn secondary gcore-record-edit-btn" data-name="${escapeHtml(r.name)}" data-type="${escapeHtml(r.type)}">${t('edit_btn')}</button>
+                    <button class="btn danger gcore-record-delete-btn" data-name="${escapeHtml(r.name)}" data-type="${escapeHtml(r.type)}">${t('delete_btn')}</button>
                   </div>
                 </td>
               </tr>
             `;
           }).join('');
 
-    const typeOptions = GCORE_RECORD_TYPES.map((t) => `<option value="${t}">${t}</option>`).join('');
+    const typeOptions = GCORE_RECORD_TYPES.map((ty) => `<option value="${ty}">${ty}</option>`).join('');
 
     return `
       <div class="panel-block">
         <h2 style="display:flex;align-items:center;justify-content:space-between;">
-          <span>Rekordy strefy: ${escapeHtml(zoneName)}</span>
-          <button class="secondary" id="gcore-records-close-btn">Zamknij</button>
+          <span>${t('records_title_prefix')} ${escapeHtml(zoneName)}</span>
+          <button class="secondary" id="gcore-records-close-btn">${t('close_btn')}</button>
         </h2>
         <div style="overflow-x:auto;">
           <table class="zones">
-            <thead><tr><th>Nazwa</th><th>Typ</th><th>TTL</th><th>Wartosci</th><th>Akcje</th></tr></thead>
+            <thead><tr><th>${t('th_name')}</th><th>${t('th_type')}</th><th>${t('th_ttl')}</th><th>${t('th_values')}</th><th>${t('th_actions')}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
-        <h2 style="margin-top:20px;">Dodaj nowy rekord</h2>
+        <h2 style="margin-top:20px;">${t('add_record_title')}</h2>
         <div class="form-grid">
           <div class="form-field">
-            <label>Nazwa (pelna, np. www.${escapeHtml(zoneName)})</label>
+            <label>${t('record_name_label', { zone: escapeHtml(zoneName) })}</label>
             <input type="text" id="gcore-record-add-name" placeholder="www.${escapeHtml(zoneName)}">
           </div>
           <div class="form-field">
-            <label>Typ</label>
+            <label>${t('record_type_label')}</label>
             <select id="gcore-record-add-type">${typeOptions}</select>
           </div>
           <div class="form-field">
-            <label>TTL</label>
+            <label>${t('record_ttl_label')}</label>
             <input type="number" id="gcore-record-add-ttl" value="300">
           </div>
         </div>
         <div class="form-field">
-          <label>Wartosc (jedna na linie; MX: "priorytet target", CAA: "flaga tag wartosc", SRV: "priorytet waga port target")</label>
+          <label>${t('record_value_label')}</label>
           <textarea id="gcore-record-add-values" rows="2" placeholder="np. 1.2.3.4" style="width:100%;font-family:var(--mono);font-size:12px;"></textarea>
         </div>
         <div class="btn-row">
-          <button class="btn" id="gcore-record-add-btn">Dodaj rekord</button>
+          <button class="btn" id="gcore-record-add-btn">${t('add_record_btn')}</button>
         </div>
         <div class="error-msg" id="gcore-record-form-error"></div>
       </div>
@@ -653,7 +655,7 @@
       btn.addEventListener('click', async () => {
         const name = btn.dataset.name;
         const type = btn.dataset.type;
-        if (!confirm(`Usunac rekord ${name} (${type})?`)) return;
+        if (!confirm(t('delete_record_confirm', { name, type }))) return;
         btn.disabled = true;
         try {
           await api(`/gcore/zones/${encodeURIComponent(gcoreEditingZone)}/records/${encodeURIComponent(type)}/${encodeURIComponent(name)}`, { method: 'DELETE' });
@@ -695,17 +697,37 @@
 
   function switchTab(tab) {
     activeTab = tab;
-    tabs.forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
+    tabs.forEach((t2) => t2.classList.toggle('active', t2.dataset.tab === tab));
     renderers[tab]();
   }
 
-  tabs.forEach((t) => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+  tabs.forEach((tb) => tb.addEventListener('click', () => switchTab(tb.dataset.tab)));
 
   document.getElementById('theme-toggle').addEventListener('click', () => {
     const cur = document.documentElement.getAttribute('data-theme');
     const next = cur === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     try { localStorage.setItem('cc-theme', next); } catch (e) {}
+  });
+
+  function updateLangSwitchUI() {
+    const lang = getLang();
+    document.querySelectorAll('.lang-switch[data-lang]').forEach((el) => {
+      el.classList.toggle('active', el.dataset.lang === lang);
+    });
+  }
+
+  document.querySelectorAll('.lang-switch[data-lang]').forEach((el) => {
+    el.addEventListener('click', () => {
+      if (getLang() === el.dataset.lang) return;
+      setLang(el.dataset.lang);
+      applyStaticTranslations();
+      updateLangSwitchUI();
+      if (app.style.display !== 'none') {
+        switchTab(activeTab);
+        loadVersionBadge();
+      }
+    });
   });
 
   document.getElementById('login-btn').addEventListener('click', doLogin);
@@ -724,7 +746,7 @@
         body: JSON.stringify({ username, password })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Blad logowania');
+      if (!res.ok) throw new Error(data.error || t('login_error_generic'));
       showApp(data.username);
     } catch (e) {
       errEl.textContent = e.message;
@@ -753,14 +775,14 @@
     } catch (e) {
       badge.className = 'badge unknown';
       badge.textContent = '?';
-      badge.title = 'Nie udalo sie sprawdzic wersji: ' + e.message;
+      badge.title = t('version_check_fail') + e.message;
       return;
     }
 
     if (info.error) {
       badge.className = 'badge unknown';
       badge.textContent = '?';
-      badge.title = 'Nie udalo sie sprawdzic wersji: ' + info.error;
+      badge.title = t('version_check_fail') + info.error;
       badge.onclick = null;
       return;
     }
@@ -768,44 +790,42 @@
     if (info.updateAvailable) {
       badge.className = 'badge inactive';
       badge.textContent = 'Update';
-      badge.title = `Dostepna aktualizacja: v${info.current} -> v${info.latest} (kliknij, zeby pobrac)`;
+      badge.title = t('update_available_title', { current: info.current, latest: info.latest });
       badge.onclick = async () => {
-        const ok = confirm(
-          `Dostepna nowsza wersja: v${info.latest} (masz v${info.current}).\n\n` +
-          'Pobrac teraz? (git pull + npm install na serwerze)\n' +
-          'Po zakonczeniu trzeba jeszcze recznie zrestartowac usluge:\n' +
-          '  sudo systemctl restart cdn-caddy'
-        );
+        const ok = confirm(t('update_confirm', { current: info.current, latest: info.latest }));
         if (!ok) return;
 
         badge.onclick = null;
-        badge.textContent = 'Aktualizuje...';
+        badge.textContent = t('updating_label');
         try {
           await api('/system/self-update', { method: 'POST' });
           badge.className = 'badge pending';
-          badge.textContent = 'Restart wymagany';
-          badge.title = 'Pliki zaktualizowane - uruchom: sudo systemctl restart cdn-caddy';
-          alert('Zaktualizowano pliki na dysku.\n\nTeraz zrestartuj usluge:\n  sudo systemctl restart cdn-caddy');
+          badge.textContent = t('restart_required_label');
+          badge.title = t('restart_required_title');
+          alert(t('update_success_alert'));
         } catch (e) {
           badge.className = 'badge inactive';
           badge.textContent = 'Update';
-          alert('Aktualizacja nie powiodla sie:\n\n' + e.message);
+          alert(t('update_fail_alert', { error: e.message }));
           loadVersionBadge();
         }
       };
     } else {
       badge.className = 'badge active';
       badge.textContent = 'STABLE';
-      badge.title = `Masz najnowsza wersje (v${info.current})`;
+      badge.title = t('stable_title', { current: info.current });
       badge.onclick = null;
     }
   }
 
   function tickClock() {
-    clockEl.textContent = new Date().toLocaleString('pl-PL');
+    clockEl.textContent = new Date().toLocaleString(locale());
   }
   setInterval(tickClock, 1000);
   tickClock();
+
+  applyStaticTranslations();
+  updateLangSwitchUI();
 
   (async function init() {
     try {
