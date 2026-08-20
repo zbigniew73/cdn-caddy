@@ -87,9 +87,12 @@ case "$ACTION" in
     caddy fmt --overwrite "$CONFIG_FILE"
     caddy adapt --config "$CONFIG_FILE" --adapter caddyfile >/dev/null
     caddy validate --config "$CONFIG_FILE" --adapter caddyfile
-    systemctl reload caddy
+    # reload-or-restart, bo "reload" na uslugie, ktora jeszcze nigdy nie
+    # zostala uruchomiona (swiezy POP, pierwsze wdrozenie) konczy sie
+    # bledem - nie ma do czego wyslac sygnalu przeladowania.
+    systemctl reload-or-restart caddy
 
-    echo "OK: ${CONFIG_FILE} zwalidowany, Caddy przeladowany."
+    echo "OK: ${CONFIG_FILE} zwalidowany, Caddy przeladowany/uruchomiony."
     ;;
 
   *)
