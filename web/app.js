@@ -254,20 +254,7 @@
     }
   }
 
-  function renderModules() {
-    content.innerHTML = `
-      <div class="panel-block">
-        <h2>Moduly</h2>
-        <p class="empty-state">
-          To jest sam szkielet panelu - zaden modul nie jest jeszcze zainstalowany.<br>
-          Planowany pierwszy modul: CDN (tokeny klientow, katalogi <code>/var/www/cdn/&lt;token&gt;/</code>,
-          upload, synchronizacja do POP-ow) - patrz <code>caddy_cdn_gcore.md</code> w repo.
-        </p>
-      </div>
-    `;
-  }
-
-  const renderers = { dashboard: renderDashboard, services: renderServices, modules: renderModules, gcore: renderGcore };
+  const renderers = { dashboard: renderDashboard, services: renderServices, gcore: renderGcore };
 
   function switchTab(tab) {
     activeTab = tab;
