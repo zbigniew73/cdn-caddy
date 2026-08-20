@@ -771,8 +771,9 @@
         <p class="empty-state">${t('caddy_config_placeholder')}</p>
         <h2 style="margin-top:20px;">${t('caddy_step1_title')}</h2>
         <p class="empty-state">${t('caddy_step1_hint', { host: escapeHtml(pool.mainPointHost) })}</p>
-        <div class="btn-row">
+        <div class="btn-row" style="align-items:center;">
           <button class="btn" id="cdn-caddy-main-check-btn">${t('caddy_step1_btn')}</button>
+          <span class="badge" id="cdn-caddy-main-check-status" style="display:none;"></span>
         </div>
         <pre class="output" id="cdn-caddy-main-check-output" style="display:none;"></pre>
         <div class="error-msg" id="cdn-caddy-main-check-error"></div>
@@ -793,16 +794,24 @@
       checkBtn.addEventListener('click', async () => {
         const errEl = document.getElementById('cdn-caddy-main-check-error');
         const outEl = document.getElementById('cdn-caddy-main-check-output');
+        const statusEl = document.getElementById('cdn-caddy-main-check-status');
         errEl.textContent = '';
         outEl.style.display = 'none';
+        statusEl.style.display = 'none';
         checkBtn.disabled = true;
         checkBtn.textContent = t('caddy_step1_running');
         try {
           const result = await api('/cdn/caddy/main-check', { method: 'POST' });
           outEl.textContent = result.log;
           outEl.style.display = 'block';
+          statusEl.className = 'badge active';
+          statusEl.textContent = t('caddy_step1_success');
+          statusEl.style.display = 'inline-block';
         } catch (e) {
           errEl.textContent = e.message;
+          statusEl.className = 'badge inactive';
+          statusEl.textContent = t('caddy_step1_failed');
+          statusEl.style.display = 'inline-block';
         } finally {
           checkBtn.disabled = false;
           checkBtn.textContent = t('caddy_step1_btn');
