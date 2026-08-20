@@ -7,6 +7,7 @@ import {
   listZones, createZone, deleteZone,
   listRecords, createRecord, updateRecord, deleteRecord
 } from '../services/gcoreDns.js';
+import { listCertificates, issueCertificate, renewCertificate, deleteCertificate } from '../services/acmeCerts.js';
 
 const router = Router();
 
@@ -122,6 +123,40 @@ router.delete('/gcore/zones/:zone/records/:type/:name', async (req, res) => {
     res.json(await deleteRecord(req.params.zone, req.params.name, req.params.type));
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.get('/gcore/certs', (req, res) => {
+  try {
+    res.json(listCertificates());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/gcore/certs', async (req, res) => {
+  const { domain, staging, email } = req.body || {};
+  try {
+    res.json(await issueCertificate(domain, { staging: staging !== false, email }));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.post('/gcore/certs/:domain/renew', async (req, res) => {
+  try {
+    res.json(await renewCertificate(req.params.domain));
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.delete('/gcore/certs/:domain', (req, res) => {
+  try {
+    deleteCertificate(req.params.domain);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 

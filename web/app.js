@@ -145,6 +145,7 @@
 
     const connected = Boolean(status.configured && status.lastTest && status.lastTest.ok);
     let zonesSection = '';
+    let certsSection = '';
     let recordsSection = '';
 
     if (connected) {
@@ -156,6 +157,15 @@
         zonesError = e.message;
       }
       zonesSection = buildZonesSection(zones, zonesError);
+
+      let certs = [];
+      let certsError = null;
+      try {
+        certs = await api('/gcore/certs');
+      } catch (e) {
+        certsError = e.message;
+      }
+      certsSection = buildCertsSection(certs, certsError);
 
       if (gcoreEditingZone) {
         let records = [];
@@ -179,11 +189,12 @@
     content.innerHTML = `
       <div class="module-grid">${buildIntegrationTile(status)}${buildStatsTile(status)}</div>
       ${zonesSection}
+      ${certsSection}
       ${recordsSection}
     `;
 
     wireIntegrationTile();
-    if (connected) wireZonesSection();
+    if (connected) { wireZonesSection(); wireCertsSection(); }
     if (connected && gcoreEditingZone) wireRecordsSection();
   }
 
@@ -384,6 +395,124 @@
         } catch (e) {
           errEl.textContent = e.message;
           addBtn.disabled = false;
+        }
+      });
+    }
+  }
+
+  function buildCertsSection(certs, certsError) {
+    const rows = certsError
+      ? `<tr><td colspan="6" class="error-msg">${escapeHtml(certsError)}</td></tr>`
+      : certs.length === 0
+        ? `<tr><td colspan="6" class="empty-state">Brak wystawionych certyfikatow.</td></tr>`
+        : certs.map((c) => `
+            <tr>
+              <td>${escapeHtml(c.domain)}</td>
+              <td><span class="badge ${c.staging ? 'unknown' : 'active'}">${c.staging ? 'staging (testowy)' : 'produkcja'}</span></td>
+              <td>${fmtDateTime(c.notBefore)}</td>
+              <td>${fmtDateTime(c.notAfter)}</td>
+              <td style="font-family:var(--mono);font-size:11px;">${escapeHtml(c.certPath)}</td>
+              <td>
+                <div class="btn-row" style="margin-bottom:0;">
+                  <button class="btn secondary gcore-cert-renew-btn" data-domain="${escapeHtml(c.domain)}">Odnow</button>
+                  <button class="btn danger gcore-cert-delete-btn" data-domain="${escapeHtml(c.domain)}">Usun</button>
+                </div>
+              </td>
+            </tr>
+          `).join('');
+
+    return `
+      <div class="panel-block">
+        <h2>Certyfikaty TLS (DNS-01)</h2>
+        <div style="overflow-x:auto;">
+          <table class="zones">
+            <thead><tr><th>Domena</th><th>Srodowisko</th><th>Wazny od</th><th>Wazny do</th><th>Plik</th><th>Akcje</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <h2 style="margin-top:20px;">Wystaw nowy certyfikat</h2>
+        <p class="empty-state">Domena musi byc jednoczesnie nazwa strefy zarzadzanej w Gcore (sekcja wyzej) - DNS-01 tworzy tymczasowy rekord TXT w tej strefie.</p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Domena</label>
+            <input type="text" id="gcore-cert-domain-input" placeholder="cdn.24z.eu">
+          </div>
+          <div class="form-field">
+            <label>Kontakt e-mail (opcjonalnie)</label>
+            <input type="text" id="gcore-cert-email-input" placeholder="admin@24z.eu">
+          </div>
+        </div>
+        <div class="form-field">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="gcore-cert-staging-input" checked style="width:auto;">
+            Let's Encrypt staging (testowy, wyzsze limity, przegladarki NIE ufaja temu certowi) - odznacz dla prawdziwego certyfikatu produkcyjnego
+          </label>
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="gcore-cert-issue-btn">Wystaw certyfikat</button>
+        </div>
+        <p class="empty-state" id="gcore-cert-progress" style="display:none;">Wystawianie w toku (walidacja DNS-01) - moze to potrwac do 1-2 minut, nie zamykaj tej karty...</p>
+        <div class="error-msg" id="gcore-cert-form-error"></div>
+      </div>
+    `;
+  }
+
+  function wireCertsSection() {
+    document.querySelectorAll('.gcore-cert-renew-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const domain = btn.dataset.domain;
+        const errEl = document.getElementById('gcore-cert-form-error');
+        errEl.textContent = '';
+        btn.disabled = true;
+        btn.textContent = 'Odnawiam...';
+        try {
+          await api(`/gcore/certs/${encodeURIComponent(domain)}/renew`, { method: 'POST' });
+          renderGcore();
+        } catch (e) {
+          errEl.textContent = e.message;
+          btn.disabled = false;
+          btn.textContent = 'Odnow';
+        }
+      });
+    });
+
+    document.querySelectorAll('.gcore-cert-delete-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const domain = btn.dataset.domain;
+        if (!confirm(`Usunac zapisany certyfikat dla "${domain}" z dysku panelu?`)) return;
+        btn.disabled = true;
+        try {
+          await api(`/gcore/certs/${encodeURIComponent(domain)}`, { method: 'DELETE' });
+          renderGcore();
+        } catch (e) {
+          document.getElementById('gcore-cert-form-error').textContent = e.message;
+          btn.disabled = false;
+        }
+      });
+    });
+
+    const issueBtn = document.getElementById('gcore-cert-issue-btn');
+    if (issueBtn) {
+      issueBtn.addEventListener('click', async () => {
+        const domain = document.getElementById('gcore-cert-domain-input').value;
+        const email = document.getElementById('gcore-cert-email-input').value;
+        const staging = document.getElementById('gcore-cert-staging-input').checked;
+        const errEl = document.getElementById('gcore-cert-form-error');
+        const progressEl = document.getElementById('gcore-cert-progress');
+        errEl.textContent = '';
+        issueBtn.disabled = true;
+        progressEl.style.display = 'block';
+        try {
+          await api('/gcore/certs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domain, email: email || undefined, staging })
+          });
+          renderGcore();
+        } catch (e) {
+          errEl.textContent = e.message;
+          issueBtn.disabled = false;
+          progressEl.style.display = 'none';
         }
       });
     }
