@@ -849,8 +849,8 @@
         ? `<tr><td colspan="3" class="empty-state">${t('pop_servers_empty')}</td></tr>`
         : servers.map((s) => `
             <tr>
-              <td>${escapeHtml(s.host)}</td>
-              <td style="font-family:var(--mono);font-size:12px;">${escapeHtml(s.ip)}</td>
+              <td style="text-align:center;">${escapeHtml(s.host)}</td>
+              <td style="text-align:center;font-family:var(--mono);font-size:12px;">${escapeHtml(s.ip)}</td>
               <td>
                 <div class="btn-row" style="margin-bottom:0;">
                   <button class="btn secondary" disabled title="${t('pop_servers_sync_soon')}">${t('pop_servers_sync_btn')}</button>
@@ -866,7 +866,7 @@
         <p class="empty-state">${t('pop_servers_hint')}</p>
         <div style="overflow-x:auto;">
           <table class="zones">
-            <thead><tr><th>${t('th_pop_host')}</th><th>${t('th_pop_ip')}</th><th>${t('th_actions')}</th></tr></thead>
+            <thead><tr><th style="text-align:center;">${t('th_pop_host')}</th><th style="text-align:center;">${t('th_pop_ip')}</th><th>${t('th_actions')}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
