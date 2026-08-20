@@ -721,6 +721,7 @@
     wirePoolTile();
     wireMainPointTile();
     wirePopPointTile();
+    if (pool.mainPointHost) wireCaddyConfigSection();
   }
 
   function buildMainPointTile(pool) {
@@ -767,7 +768,14 @@
     const caddyTile = `
       <div class="panel-block">
         <h2>${t('caddy_config_title')}</h2>
-        <p class="empty-state">${t('caddy_config_placeholder', { host: escapeHtml(pool.mainPointHost) })}</p>
+        <p class="empty-state">${t('caddy_config_placeholder')}</p>
+        <h2 style="margin-top:20px;">${t('caddy_step1_title')}</h2>
+        <p class="empty-state">${t('caddy_step1_hint', { host: escapeHtml(pool.mainPointHost) })}</p>
+        <div class="btn-row">
+          <button class="btn" id="cdn-caddy-main-check-btn">${t('caddy_step1_btn')}</button>
+        </div>
+        <pre class="output" id="cdn-caddy-main-check-output" style="display:none;"></pre>
+        <div class="error-msg" id="cdn-caddy-main-check-error"></div>
       </div>
     `;
     const infoTile = `
@@ -777,6 +785,30 @@
       </div>
     `;
     return `<div class="module-grid">${caddyTile}${infoTile}</div>`;
+  }
+
+  function wireCaddyConfigSection() {
+    const checkBtn = document.getElementById('cdn-caddy-main-check-btn');
+    if (checkBtn) {
+      checkBtn.addEventListener('click', async () => {
+        const errEl = document.getElementById('cdn-caddy-main-check-error');
+        const outEl = document.getElementById('cdn-caddy-main-check-output');
+        errEl.textContent = '';
+        outEl.style.display = 'none';
+        checkBtn.disabled = true;
+        checkBtn.textContent = t('caddy_step1_running');
+        try {
+          const result = await api('/cdn/caddy/main-check', { method: 'POST' });
+          outEl.textContent = result.log;
+          outEl.style.display = 'block';
+        } catch (e) {
+          errEl.textContent = e.message;
+        } finally {
+          checkBtn.disabled = false;
+          checkBtn.textContent = t('caddy_step1_btn');
+        }
+      });
+    }
   }
 
   function buildPopPointTile() {
