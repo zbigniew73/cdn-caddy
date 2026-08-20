@@ -37,10 +37,14 @@ ACTION="${ARGS[0]:-}"
 case "$ACTION" in
   env-setup)
     getent group caddy >/dev/null 2>&1 || die "grupa systemowa 'caddy' nie istnieje - czy Caddy jest zainstalowany?"
+    getent passwd caddy >/dev/null 2>&1 || die "uzytkownik systemowy 'caddy' nie istnieje - czy Caddy jest zainstalowany?"
 
+    # Usluga caddy dziala jako user caddy (nie root), wiec katalog logow
+    # musi byc jego wlasnoscia - inaczej przy starcie/reload dostaje
+    # "permission denied" przy otwieraniu pliku logu.
     mkdir -p /var/log/caddy
-    chown root:caddy /var/log/caddy
-    chmod 775 /var/log/caddy
+    chown caddy:caddy /var/log/caddy
+    chmod 755 /var/log/caddy
 
     mkdir -p /var/www
     chown root:caddy /var/www
@@ -87,6 +91,12 @@ case "$ACTION" in
     caddy fmt --overwrite "$CONFIG_FILE"
     caddy adapt --config "$CONFIG_FILE" --adapter caddyfile >/dev/null
     caddy validate --config "$CONFIG_FILE" --adapter caddyfile
+    # "caddy validate" uruchomione jako root czasem samo tworzy/dotyka
+    # pliku logu (laduje caly config wlacznie z blokiem log{}), przez co
+    # usluga startujaca pozniej jako caddy:caddy dostaje "permission
+    # denied" przy otwieraniu tego pliku - wymuszamy wlasciciela z
+    # powrotem.
+    [ -d /var/log/caddy ] && chown -R caddy:caddy /var/log/caddy
     # reload-or-restart, bo "reload" na uslugie, ktora jeszcze nigdy nie
     # zostala uruchomiona (swiezy POP, pierwsze wdrozenie) konczy sie
     # bledem - nie ma do czego wyslac sygnalu przeladowania.
