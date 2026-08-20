@@ -3,6 +3,7 @@ import { getSystemStats } from '../services/systemStats.js';
 import { listServices } from '../services/systemServices.js';
 import { getStatus, saveAndTestApiKey, retestApiKey, removeApiKey } from '../services/gcore.js';
 import { checkForUpdate } from '../services/appUpdate.js';
+import { pullAndInstall } from '../services/selfUpdate.js';
 import {
   listZones, createZone, deleteZone,
   listRecords, createRecord, updateRecord, deleteRecord
@@ -32,6 +33,14 @@ router.get('/system/version-check', async (req, res) => {
     res.json(await checkForUpdate());
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/system/self-update', async (req, res) => {
+  try {
+    res.json(await pullAndInstall());
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
   }
 });
 

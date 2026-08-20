@@ -186,6 +186,7 @@ nav {
 .badge.active { background: rgba(30,142,90,0.15); color: var(--ok); }
 .badge.inactive { background: rgba(192,57,43,0.15); color: var(--danger); }
 .badge.unknown { background: rgba(107,122,134,0.15); color: var(--muted); }
+.badge.pending { background: rgba(184,134,11,0.15); color: var(--warn); }
 
 .system-grid {
   display: grid;

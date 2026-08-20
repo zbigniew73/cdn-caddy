@@ -767,14 +767,31 @@
     if (info.updateAvailable) {
       badge.className = 'badge inactive';
       badge.textContent = 'Update';
-      badge.title = `Dostepna aktualizacja: v${info.current} -> v${info.latest} (kliknij po instrukcje)`;
-      badge.onclick = () => alert(
-        `Dostepna nowsza wersja: v${info.latest} (masz v${info.current})\n\n` +
-        'Na serwerze:\n' +
-        '  cd /opt/cdn-caddy\n' +
-        '  sudo -u cdnadmin git pull\n' +
-        '  sudo systemctl restart cdn-caddy'
-      );
+      badge.title = `Dostepna aktualizacja: v${info.current} -> v${info.latest} (kliknij, zeby pobrac)`;
+      badge.onclick = async () => {
+        const ok = confirm(
+          `Dostepna nowsza wersja: v${info.latest} (masz v${info.current}).\n\n` +
+          'Pobrac teraz? (git pull + npm install na serwerze)\n' +
+          'Po zakonczeniu trzeba jeszcze recznie zrestartowac usluge:\n' +
+          '  sudo systemctl restart cdn-caddy'
+        );
+        if (!ok) return;
+
+        badge.onclick = null;
+        badge.textContent = 'Aktualizuje...';
+        try {
+          await api('/system/self-update', { method: 'POST' });
+          badge.className = 'badge pending';
+          badge.textContent = 'Restart wymagany';
+          badge.title = 'Pliki zaktualizowane - uruchom: sudo systemctl restart cdn-caddy';
+          alert('Zaktualizowano pliki na dysku.\n\nTeraz zrestartuj usluge:\n  sudo systemctl restart cdn-caddy');
+        } catch (e) {
+          badge.className = 'badge inactive';
+          badge.textContent = 'Update';
+          alert('Aktualizacja nie powiodla sie:\n\n' + e.message);
+          loadVersionBadge();
+        }
+      };
     } else {
       badge.className = 'badge active';
       badge.textContent = 'STABLE';
